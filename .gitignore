@@ -1,0 +1,5 @@
+# Fichiers sensibles
+wp-config.php
+auth.php
+.env
+*.log

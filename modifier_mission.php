@@ -1,0 +1,994 @@
+<?php
+require_once('wp-config.php');
+require_once('auth.php');
+verifierRole('admin');
+
+$serveur = DB_HOST;
+$utilisateur = DB_USER;
+$motdepasse = DB_PASSWORD;
+$base = DB_NAME;
+
+$message = "";
+$messageType = "";
+$mission = null;
+
+try {
+    $conn = new PDO("mysql:host=$serveur;dbname=$base;charset=utf8mb4", $utilisateur, $motdepasse);
+    $conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+} catch(PDOException $e) {
+    die("Erreur de connexion : " . $e->getMessage());
+}
+
+// Récupérer les bénévoles
+$benevoles = [];
+try {
+    $stmt = $conn->query("SELECT id_benevole, nom FROM EPI_benevole ORDER BY nom");
+    $benevoles = $stmt->fetchAll(PDO::FETCH_ASSOC);
+} catch(PDOException $e) {}
+
+// Récupérer les villes
+$villes = [];
+try {
+    $stmt = $conn->query("SELECT ville, cp FROM EPI_ville ORDER BY ville");
+    $villes = $stmt->fetchAll(PDO::FETCH_ASSOC);
+} catch(PDOException $e) {}
+
+// Récupérer les natures d'intervention depuis la table EPI_intervention
+$natures_intervention = [];
+try {
+    $stmt = $conn->query("SELECT DISTINCT Nature_intervention FROM EPI_intervention ORDER BY Nature_intervention");
+    $natures_intervention = $stmt->fetchAll(PDO::FETCH_ASSOC);
+} catch(PDOException $e) {}
+
+// Récupérer les infos complètes de l'aidé pour la mission en cours
+$aideInfo = null;
+if (isset($_GET['id'])) {
+    try {
+        $stmt = $conn->prepare("SELECT m.id_aide FROM EPI_mission m WHERE m.id_mission = :id");
+        $stmt->execute([':id' => $_GET['id']]);
+        $missionData = $stmt->fetch(PDO::FETCH_ASSOC);
+        
+        if ($missionData && $missionData['id_aide']) {
+            $stmt = $conn->prepare("SELECT tel_fixe, tel_portable FROM EPI_aide WHERE id_aide = :id");
+            $stmt->execute([':id' => $missionData['id_aide']]);
+            $aideInfo = $stmt->fetch(PDO::FETCH_ASSOC);
+        }
+    } catch(PDOException $e) {}
+}
+
+// Calculer le premier jour du mois courant
+$premierJourMoisCourant = date('Y-m-01');
+
+// Récupérer les missions pour le filtre avec recherche (uniquement mois courant et futurs)
+$missions = [];
+$searchTerm = isset($_GET['search']) ? $_GET['search'] : '';
+
+try {
+    if ($searchTerm) {
+        $stmt = $conn->prepare("SELECT id_mission, date_mission, aide 
+                               FROM EPI_mission 
+                               WHERE date_mission >= :date_limite 
+                               AND aide LIKE :search 
+                               ORDER BY date_mission DESC LIMIT 100");
+        $stmt->execute([
+            ':date_limite' => $premierJourMoisCourant,
+            ':search' => "%$searchTerm%"
+        ]);
+    } else {
+        $stmt = $conn->prepare("SELECT id_mission, date_mission, aide 
+                               FROM EPI_mission 
+                               WHERE date_mission >= :date_limite 
+                               ORDER BY date_mission DESC LIMIT 100");
+        $stmt->execute([':date_limite' => $premierJourMoisCourant]);
+    }
+    $missions = $stmt->fetchAll(PDO::FETCH_ASSOC);
+} catch(PDOException $e) {}
+
+// Traitement de la suppression
+if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['action']) && $_POST['action'] == 'delete' && isset($_POST['id_mission'])) {
+    try {
+        $stmt = $conn->prepare("SELECT date_mission, aide FROM EPI_mission WHERE id_mission = :id");
+        $stmt->execute([':id' => $_POST['id_mission']]);
+        $missionToDelete = $stmt->fetch(PDO::FETCH_ASSOC);
+        
+        if (!$missionToDelete) {
+            $errorMsg = urlencode("Mission introuvable");
+            header("Location: " . $_SERVER['PHP_SELF'] . "?error=" . $errorMsg);
+            exit();
+        }
+        
+        if ($missionToDelete['date_mission'] < $premierJourMoisCourant) {
+            $errorMsg = urlencode("Cette mission ne peut pas être supprimée (date antérieure au mois courant)");
+            header("Location: " . $_SERVER['PHP_SELF'] . "?error=" . $errorMsg . "&id=" . $_POST['id_mission']);
+            exit();
+        }
+        
+        $stmt = $conn->prepare("DELETE FROM EPI_mission WHERE id_mission = :id");
+        $stmt->execute([':id' => $_POST['id_mission']]);
+        
+        header("Location: " . $_SERVER['PHP_SELF'] . "?deleted=1");
+        exit();
+        
+    } catch(PDOException $e) {
+        $errorMsg = urlencode($e->getMessage());
+        header("Location: " . $_SERVER['PHP_SELF'] . "?error=" . $errorMsg);
+        exit();
+    }
+}
+
+// Traitement de la modification
+if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['id_mission']) && (!isset($_POST['action']) || $_POST['action'] != 'delete')) {
+    try {
+        $stmt = $conn->prepare("SELECT date_mission FROM EPI_mission WHERE id_mission = :id");
+        $stmt->execute([':id' => $_POST['id_mission']]);
+        $missionDate = $stmt->fetch(PDO::FETCH_ASSOC);
+        
+        if (!$missionDate || $missionDate['date_mission'] < $premierJourMoisCourant) {
+            $errorMsg = urlencode("Cette mission ne peut pas être modifiée (date antérieure au mois courant)");
+            header("Location: " . $_SERVER['PHP_SELF'] . "?error=" . $errorMsg);
+            exit();
+        }
+    } catch(PDOException $e) {
+        $errorMsg = urlencode($e->getMessage());
+        header("Location: " . $_SERVER['PHP_SELF'] . "?error=" . $errorMsg);
+        exit();
+    }
+    
+    try {
+        // Calculer la durée
+        $duree = null;
+        if (!empty($_POST['heure_depart_mission']) && !empty($_POST['heure_retour_mission'])) {
+            $depart = new DateTime($_POST['heure_depart_mission']);
+            $retour = new DateTime($_POST['heure_retour_mission']);
+            $interval = $depart->diff($retour);
+            $duree = $interval->format('%H:%I:%S');
+        }
+        
+        // Si aucun bénévole n'est sélectionné (id_benevole vide), on efface toutes les infos du bénévole
+        $id_benevole = !empty($_POST['id_benevole']) ? $_POST['id_benevole'] : null;
+        $benevole = null;
+        $adresse_benevole = null;
+        $cp_benevole = null;
+        $commune_benevole = null;
+        $secteur_benevole = null;
+        
+        // Si un bénévole est sélectionné, on garde ses infos
+        if ($id_benevole) {
+            $benevole = !empty($_POST['benevole']) ? $_POST['benevole'] : null;
+            $adresse_benevole = !empty($_POST['adresse_benevole']) ? $_POST['adresse_benevole'] : null;
+            $cp_benevole = !empty($_POST['cp_benevole']) ? $_POST['cp_benevole'] : null;
+            $commune_benevole = !empty($_POST['commune_benevole']) ? $_POST['commune_benevole'] : null;
+            $secteur_benevole = !empty($_POST['secteur_benevole']) ? $_POST['secteur_benevole'] : null;
+        }
+        
+        $sql = "UPDATE EPI_mission SET 
+                date_mission = :date_mission, heure_depart_mission = :heure_depart_mission,
+                heure_retour_mission = :heure_retour_mission, duree = :duree, km_saisi = :km_saisi,
+                km_calcule = :km_calcule, id_benevole = :id_benevole, benevole = :benevole,
+                adresse_benevole = :adresse_benevole, cp_benevole = :cp_benevole,
+                commune_benevole = :commune_benevole, secteur_benevole = :secteur_benevole,
+                id_aide = :id_aide, aide = :aide, adresse_aide = :adresse_aide,
+                cp_aide = :cp_aide, commune_aide = :commune_aide, secteur_aide = :secteur_aide,
+                adresse_destination = :adresse_destination, cp_destination = :cp_destination,
+                commune_destination = :commune_destination, heure_rdv = :heure_rdv,
+                nature_intervention = :nature_intervention, commentaires = :commentaires
+                WHERE id_mission = :id_mission";
+        
+        $stmt = $conn->prepare($sql);
+        $stmt->execute([
+            ':date_mission' => !empty($_POST['date_mission']) ? $_POST['date_mission'] : null,
+            ':heure_depart_mission' => !empty($_POST['heure_depart_mission']) ? $_POST['heure_depart_mission'] : null,
+            ':heure_retour_mission' => !empty($_POST['heure_retour_mission']) ? $_POST['heure_retour_mission'] : null,
+            ':duree' => $duree,
+            ':km_saisi' => !empty($_POST['km_saisi']) ? $_POST['km_saisi'] : null,
+            ':km_calcule' => !empty($_POST['km_calcule']) ? $_POST['km_calcule'] : null,
+            ':id_benevole' => $id_benevole,
+            ':benevole' => $benevole,
+            ':adresse_benevole' => $adresse_benevole,
+            ':cp_benevole' => $cp_benevole,
+            ':commune_benevole' => $commune_benevole,
+            ':secteur_benevole' => $secteur_benevole,
+            ':id_aide' => !empty($_POST['id_aide']) ? $_POST['id_aide'] : null,
+            ':aide' => !empty($_POST['aide']) ? $_POST['aide'] : null,
+            ':adresse_aide' => !empty($_POST['adresse_aide']) ? $_POST['adresse_aide'] : null,
+            ':cp_aide' => !empty($_POST['cp_aide']) ? $_POST['cp_aide'] : null,
+            ':commune_aide' => !empty($_POST['commune_aide']) ? $_POST['commune_aide'] : null,
+            ':secteur_aide' => !empty($_POST['secteur_aide']) ? $_POST['secteur_aide'] : null,
+            ':adresse_destination' => !empty($_POST['adresse_destination']) ? $_POST['adresse_destination'] : null,
+            ':cp_destination' => !empty($_POST['cp_destination']) ? $_POST['cp_destination'] : null,
+            ':commune_destination' => !empty($_POST['commune_destination']) ? $_POST['commune_destination'] : null,
+            ':heure_rdv' => !empty($_POST['heure_rdv']) ? $_POST['heure_rdv'] : null,
+            ':nature_intervention' => !empty($_POST['nature_intervention']) ? $_POST['nature_intervention'] : null,
+            ':commentaires' => !empty($_POST['commentaires']) ? $_POST['commentaires'] : null,
+            ':id_mission' => $_POST['id_mission']
+        ]);
+        
+        header("Location: " . $_SERVER['PHP_SELF'] . "?success=1&id=" . $_POST['id_mission']);
+        exit();
+        
+    } catch(PDOException $e) {
+        $errorMsg = urlencode($e->getMessage());
+        header("Location: " . $_SERVER['PHP_SELF'] . "?error=" . $errorMsg . "&id=" . $_POST['id_mission']);
+        exit();
+    }
+}
+
+// Charger la mission sélectionnée
+if (isset($_GET['id'])) {
+    try {
+        $stmt = $conn->prepare("SELECT * FROM EPI_mission WHERE id_mission = :id");
+        $stmt->execute([':id' => $_GET['id']]);
+        $mission = $stmt->fetch(PDO::FETCH_ASSOC);
+        
+        if (!$mission) {
+            $message = "❌ Mission introuvable";
+            $messageType = "error";
+        } elseif ($mission['date_mission'] < $premierJourMoisCourant) {
+            $message = "❌ Cette mission ne peut pas être modifiée (date antérieure au mois courant)";
+            $messageType = "error";
+            $mission = null;
+        }
+    } catch(PDOException $e) {
+        $message = "❌ Erreur : " . $e->getMessage();
+        $messageType = "error";
+    }
+}
+
+if (isset($_GET['success'])) {
+    $message = "✅ Mission modifiée avec succès !";
+    $messageType = "success";
+} elseif (isset($_GET['deleted'])) {
+    $message = "✅ Mission supprimée avec succès !";
+    $messageType = "success";
+} elseif (isset($_GET['error'])) {
+    $message = "❌ Erreur : " . urldecode($_GET['error']);
+    $messageType = "error";
+}
+?>
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Modifier une Mission</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .back-link {
+            display: inline-block;
+            background: white;
+            padding: 10px 20px;
+            border-radius: 8px;
+            text-decoration: none;
+            color: #667eea;
+            font-weight: 600;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+            margin-bottom: 20px;
+            transition: transform 0.2s ease;
+        }
+
+        .back-link:hover {
+            transform: translateY(-2px);
+        }
+
+        .container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            padding: 30px;
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            color: #667eea;
+            margin-bottom: 25px;
+            text-align: center;
+            font-size: 24px;
+        }
+
+        h3 {
+            color: #667eea;
+            margin-top: 25px;
+            margin-bottom: 15px;
+            font-size: 16px;
+            border-bottom: 2px solid #e0e0e0;
+            padding-bottom: 8px;
+        }
+
+        .search-box {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 25px;
+        }
+
+        .search-box label {
+            display: block;
+            margin-bottom: 8px;
+            color: #333;
+            font-weight: 600;
+        }
+
+        .search-row {
+            display: flex;
+            gap: 10px;
+        }
+
+        .search-row input {
+            flex: 1;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 14px;
+        }
+
+        .search-row button {
+            padding: 12px 24px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        .search-box select {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 14px;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+
+        .info-notice {
+            background: #fff3cd;
+            padding: 12px;
+            border-radius: 8px;
+            border-left: 4px solid #ffc107;
+            margin-bottom: 15px;
+            font-size: 13px;
+            color: #856404;
+        }
+
+        .mission-summary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 12px;
+            margin-bottom: 30px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+        }
+
+        .mission-summary h2 {
+            font-size: 18px;
+            margin-bottom: 12px;
+            text-align: center;
+        }
+
+        .summary-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 12px;
+            margin-top: 12px;
+        }
+
+        .summary-item {
+            background: rgba(255, 255, 255, 0.15);
+            padding: 10px 12px;
+            border-radius: 8px;
+            backdrop-filter: blur(10px);
+        }
+
+        .summary-item strong {
+            display: block;
+            font-size: 11px;
+            opacity: 0.9;
+            margin-bottom: 4px;
+        }
+
+        .summary-item span {
+            font-size: 15px;
+            font-weight: 600;
+        }
+
+        .form-group {
+            margin-bottom: 18px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 6px;
+            color: #333;
+            font-weight: 600;
+            font-size: 13px;
+        }
+
+        input, select, textarea {
+            width: 100%;
+            padding: 10px 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: all 0.3s ease;
+            font-family: inherit;
+        }
+
+        textarea {
+            resize: vertical;
+            min-height: 80px;
+        }
+
+        select {
+            cursor: pointer;
+            appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23333' d='M6 9L1 4h10z'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 15px center;
+            background-color: white;
+            padding-right: 40px;
+        }
+
+        input:focus, select:focus, textarea:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        input[readonly] {
+            background-color: #f5f5f5;
+        }
+
+        .row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+        }
+
+        .button-row {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 15px;
+            margin-top: 15px;
+        }
+
+        .btn-submit {
+            width: 100%;
+            padding: 12px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s ease;
+        }
+
+        .btn-submit:hover {
+            transform: translateY(-2px);
+        }
+
+        .btn-delete {
+            width: 100%;
+            padding: 12px;
+            background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s ease;
+        }
+
+        .btn-delete:hover {
+            transform: translateY(-2px);
+            background: linear-gradient(135deg, #c82333 0%, #bd2130 100%);
+        }
+
+        .message {
+            margin-bottom: 20px;
+            padding: 12px;
+            border-radius: 8px;
+            text-align: center;
+            font-weight: 500;
+        }
+
+        .message.success {
+            background-color: #d4edda;
+            color: #155724;
+        }
+
+        .message.error {
+            background-color: #f8d7da;
+            color: #721c24;
+        }
+
+        .no-selection {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+        }
+
+        .info-box {
+            background: #e3f2fd;
+            padding: 12px;
+            border-radius: 8px;
+            border-left: 4px solid #2196F3;
+            margin-bottom: 15px;
+            font-size: 13px;
+            color: #1565c0;
+        }
+
+        .duree-display {
+            background: #d4edda;
+            padding: 12px;
+            border-radius: 8px;
+            border-left: 4px solid #28a745;
+            margin-top: 10px;
+            font-size: 14px;
+            color: #155724;
+            font-weight: 600;
+        }
+
+        /* Modal de confirmation */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.5);
+            animation: fadeIn 0.3s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        .modal-content {
+            background-color: white;
+            margin: 15% auto;
+            padding: 30px;
+            border-radius: 15px;
+            width: 90%;
+            max-width: 500px;
+            animation: slideIn 0.3s ease;
+            text-align: center;
+        }
+
+        @keyframes slideIn {
+            from { transform: translateY(-50px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+
+        .modal-header {
+            margin-bottom: 20px;
+        }
+
+        .modal-header h2 {
+            color: #dc3545;
+            font-size: 22px;
+            margin-bottom: 10px;
+        }
+
+        .modal-body {
+            margin-bottom: 25px;
+            color: #666;
+            font-size: 14px;
+        }
+
+        .modal-buttons {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+        }
+
+        .modal-btn {
+            padding: 10px 25px;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            font-size: 14px;
+            transition: transform 0.2s ease;
+        }
+
+        .modal-btn:hover {
+            transform: translateY(-2px);
+        }
+
+        .modal-btn-cancel {
+            background: #6c757d;
+            color: white;
+        }
+
+        .modal-btn-confirm {
+            background: #dc3545;
+            color: white;
+        }
+
+        @media (max-width: 768px) {
+            .row, .search-row, .summary-grid, .button-row {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <a href="dashboard.php" class="back-link">← Retour au dashboard</a>
+
+    <div class="container">
+        <h1>✏️ Modifier une Mission</h1>
+
+        <div class="info-notice">
+            ℹ️ Seules les missions du mois courant (à partir du <?php echo date('d/m/Y', strtotime($premierJourMoisCourant)); ?>) et des mois futurs peuvent être modifiées.
+        </div>
+
+        <?php if($message): ?>
+            <div class="message <?php echo $messageType; ?>">
+                <?php echo $message; ?>
+            </div>
+        <?php endif; ?>
+
+        <div class="search-box">
+            <label>🔍 Rechercher une mission</label>
+            <form method="GET" class="search-row">
+                <input type="text" name="search" placeholder="Rechercher par nom de l'aidé..." 
+                       value="<?php echo htmlspecialchars($searchTerm); ?>">
+                <button type="submit">Rechercher</button>
+            </form>
+
+            <?php if ($missions): ?>
+            <select onchange="if(this.value) window.location.href='?id='+this.value<?php echo $searchTerm ? '+(\'&search='.urlencode($searchTerm).'\')' : ''; ?>">
+                <option value="">-- Sélectionnez une mission --</option>
+                <?php foreach($missions as $m): ?>
+                    <option value="<?php echo $m['id_mission']; ?>" 
+                            <?php echo (isset($_GET['id']) && $_GET['id'] == $m['id_mission']) ? 'selected' : ''; ?>>
+                        <?php echo date('d/m/Y', strtotime($m['date_mission'])); ?> - 
+                        <?php echo htmlspecialchars($m['aide']); ?>
+                    </option>
+                <?php endforeach; ?>
+            </select>
+            <?php else: ?>
+                <p style="text-align: center; color: #666; margin-top: 15px;">
+                    Aucune mission trouvée pour le mois courant et les mois futurs.
+                </p>
+            <?php endif; ?>
+        </div>
+
+        <?php if($mission): ?>
+        
+        <!-- Résumé de la mission -->
+        <div class="mission-summary">
+            <h2>📋 Résumé de la mission</h2>
+            <div class="summary-grid">
+                <div class="summary-item">
+                    <strong>📅 Date et heure</strong>
+                    <span><?php echo date('d/m/Y', strtotime($mission['date_mission'])); ?>
+                    <?php if($mission['heure_rdv']): ?>
+                        à <?php echo substr($mission['heure_rdv'], 0, 5); ?>
+                    <?php endif; ?>
+                    </span>
+                </div>
+                <div class="summary-item">
+                    <strong>🤝 Personne aidée</strong>
+                    <span><?php echo htmlspecialchars($mission['aide']); ?></span>
+                </div>
+                <div class="summary-item">
+                    <strong>👤 Bénévole assigné</strong>
+                    <span><?php echo htmlspecialchars($mission['benevole'] ?: 'Non assigné'); ?></span>
+                </div>
+            </div>
+        </div>
+
+        <form method="POST" action="" id="mainForm">
+            <input type="hidden" name="id_mission" value="<?php echo $mission['id_mission']; ?>">
+
+            <h3>📅 Date et Heure de rendez-vous</h3>
+            <div class="row">
+                <div class="form-group">
+                    <label for="date_mission">Date de la mission *</label>
+                    <input type="date" id="date_mission" name="date_mission" required 
+                           min="<?php echo $premierJourMoisCourant; ?>"
+                           value="<?php echo $mission['date_mission']; ?>">
+                </div>
+                <div class="form-group">
+                    <label for="heure_rdv">Heure de rendez-vous</label>
+                    <input type="time" id="heure_rdv" name="heure_rdv" 
+                           value="<?php echo $mission['heure_rdv']; ?>">
+                </div>
+            </div>
+
+            <h3>🤝 Personne Aidée</h3>
+            <div class="form-group">
+                <label for="aide_nom">Nom de la personne aidée</label>
+                <input type="text" id="aide_nom" readonly
+                       value="<?php echo htmlspecialchars($mission['aide']); ?>">
+            </div>
+
+            <input type="hidden" id="aide" name="aide" value="<?php echo htmlspecialchars($mission['aide']); ?>">
+            <input type="hidden" id="id_aide" name="id_aide" value="<?php echo $mission['id_aide']; ?>">
+            <input type="hidden" id="secteur_aide" name="secteur_aide" value="<?php echo htmlspecialchars($mission['secteur_aide']); ?>">
+
+            <div class="row">
+                <div class="form-group">
+                    <label for="adresse_aide">Adresse</label>
+                    <input type="text" id="adresse_aide" name="adresse_aide" readonly
+                           value="<?php echo htmlspecialchars($mission['adresse_aide']); ?>">
+                </div>
+                <div class="form-group">
+                    <label for="cp_aide">Code postal</label>
+                    <input type="text" id="cp_aide" name="cp_aide" readonly
+                           value="<?php echo htmlspecialchars($mission['cp_aide']); ?>">
+                </div>
+                <div class="form-group">
+                    <label for="commune_aide">Commune</label>
+                    <input type="text" id="commune_aide" name="commune_aide" readonly
+                           value="<?php echo htmlspecialchars($mission['commune_aide']); ?>">
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="form-group">
+                    <label for="tel_fixe">📞 Téléphone fixe</label>
+                    <input type="tel" id="tel_fixe" readonly
+                           value="<?php echo htmlspecialchars($aideInfo['tel_fixe'] ?? ''); ?>">
+                </div>
+                <div class="form-group">
+                    <label for="tel_portable">📞 Téléphone portable</label>
+                    <input type="tel" id="tel_portable" readonly
+                           value="<?php echo htmlspecialchars($aideInfo['tel_portable'] ?? ''); ?>">
+                </div>
+            </div>
+
+            <h3>📝 Nature de la Prestation</h3>
+            <div class="form-group">
+                <label for="nature_intervention">Nature de l'intervention</label>
+                <select id="nature_intervention" name="nature_intervention">
+                    <option value="">-- Sélectionnez --</option>
+                    <?php foreach($natures_intervention as $nature): ?>
+                        <option value="<?php echo htmlspecialchars($nature['Nature_intervention']); ?>" 
+                                <?php echo ($mission['nature_intervention'] == $nature['Nature_intervention']) ? 'selected' : ''; ?>>
+                            <?php echo htmlspecialchars($nature['Nature_intervention']); ?>
+                        </option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
+
+            <h3>📍 Adresse de Destination</h3>
+            <div class="form-group">
+                <label for="adresse_destination">Adresse de destination</label>
+                <input type="text" id="adresse_destination" name="adresse_destination"
+                       value="<?php echo htmlspecialchars($mission['adresse_destination']); ?>">
+            </div>
+
+            <div class="row">
+                <div class="form-group">
+                    <label for="commune_destination">Commune destination</label>
+                    <select id="commune_destination" name="commune_destination" onchange="updateCPFromVille()">
+                        <option value="">-- Sélectionnez une ville --</option>
+                        <?php foreach($villes as $v): ?>
+                            <option value="<?php echo htmlspecialchars($v['ville']); ?>" 
+                                    data-cp="<?php echo htmlspecialchars($v['cp']); ?>"
+                                    <?php echo ($mission['commune_destination'] == $v['ville']) ? 'selected' : ''; ?>>
+                                <?php echo htmlspecialchars($v['ville']); ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="cp_destination">Code postal destination</label>
+                    <input type="text" id="cp_destination" name="cp_destination" readonly
+                           value="<?php echo htmlspecialchars($mission['cp_destination']); ?>">
+                </div>
+            </div>
+
+            <h3>👤 Bénévole Assigné</h3>
+            <div class="form-group">
+                <label for="id_benevole">Bénévole *</label>
+                <select id="id_benevole" name="id_benevole" >
+                    <option value="">-- Choisissez --</option>
+                    <?php foreach($benevoles as $b): ?>
+                        <option value="<?php echo $b['id_benevole']; ?>"
+                                data-nom="<?php echo htmlspecialchars($b['nom']); ?>"
+                                <?php echo ($mission['id_benevole'] == $b['id_benevole']) ? 'selected' : ''; ?>>
+                            <?php echo htmlspecialchars($b['nom']); ?>
+                        </option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
+
+            <input type="hidden" id="benevole" name="benevole" value="<?php echo htmlspecialchars($mission['benevole']); ?>">
+            <input type="hidden" id="adresse_benevole" name="adresse_benevole" value="<?php echo htmlspecialchars($mission['adresse_benevole']); ?>">
+            <input type="hidden" id="cp_benevole" name="cp_benevole" value="<?php echo htmlspecialchars($mission['cp_benevole']); ?>">
+            <input type="hidden" id="commune_benevole" name="commune_benevole" value="<?php echo htmlspecialchars($mission['commune_benevole']); ?>">
+            <input type="hidden" id="secteur_benevole" name="secteur_benevole" value="<?php echo htmlspecialchars($mission['secteur_benevole']); ?>">
+
+            <h3>💬 Commentaires Mission</h3>
+            <div class="form-group">
+                <label for="commentaires">Commentaires</label>
+                <textarea id="commentaires" name="commentaires"><?php echo htmlspecialchars($mission['commentaires']); ?></textarea>
+            </div>
+
+            <h3>🚗 Kilométrage et Horaires</h3>
+            <div class="row">
+                <div class="form-group">
+                    <label for="km_saisi">Km saisis</label>
+                    <input type="number" step="0.01" id="km_saisi" name="km_saisi"
+                           value="<?php echo $mission['km_saisi']; ?>">
+                </div>
+                <div class="form-group">
+                    <label for="km_calcule">Km calculés</label>
+                    <input type="number" step="0.01" id="km_calcule" name="km_calcule"
+                           value="<?php echo $mission['km_calcule']; ?>">
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="form-group">
+                    <label for="heure_depart_mission">Heure de départ</label>
+                    <input type="time" id="heure_depart_mission" name="heure_depart_mission"
+                           onchange="calculerDuree()"
+                           value="<?php echo $mission['heure_depart_mission']; ?>">
+                </div>
+                <div class="form-group">
+                    <label for="heure_retour_mission">Heure de retour</label>
+                    <input type="time" id="heure_retour_mission" name="heure_retour_mission"
+                           onchange="calculerDuree()"
+                           value="<?php echo $mission['heure_retour_mission']; ?>">
+                </div>
+            </div>
+
+            <div id="dureeDisplay" class="duree-display" style="display: none;">
+                ⏱️ Durée calculée : <span id="dureeText"></span>
+            </div>
+
+            <div class="button-row">
+                <button type="submit" class="btn-submit">💾 Enregistrer les modifications</button>
+                <button type="button" class="btn-delete" onclick="confirmerSuppression()">🗑️ Supprimer</button>
+            </div>
+        </form>
+
+        <!-- Formulaire caché pour la suppression -->
+        <form method="POST" action="" id="deleteForm" style="display: none;">
+            <input type="hidden" name="id_mission" value="<?php echo $mission['id_mission']; ?>">
+            <input type="hidden" name="action" value="delete">
+        </form>
+
+        <?php elseif (!isset($_GET['id']) || !$mission): ?>
+            <div class="no-selection">
+                <p>👆 Utilisez la recherche ci-dessus pour trouver une mission</p>
+            </div>
+        <?php endif; ?>
+    </div>
+
+    <!-- Modal de confirmation de suppression -->
+    <div id="confirmModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>⚠️ Confirmer la suppression</h2>
+            </div>
+            <div class="modal-body">
+                <p><strong>Êtes-vous sûr de vouloir supprimer cette mission ?</strong></p>
+                <p style="margin-top: 10px;">Cette action est irréversible.</p>
+                <?php if($mission): ?>
+                <p style="margin-top: 15px; color: #667eea; font-weight: 600;">
+                    Mission du <?php echo date('d/m/Y', strtotime($mission['date_mission'])); ?> - 
+                    <?php echo htmlspecialchars($mission['aide']); ?>
+                </p>
+                <?php endif; ?>
+            </div>
+            <div class="modal-buttons">
+                <button class="modal-btn modal-btn-cancel" onclick="fermerModal()">Annuler</button>
+                <button class="modal-btn modal-btn-confirm" onclick="supprimerMission()">Supprimer</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        async function chargerInfosBenevole(id) {
+            if (!id) return;
+            try {
+                const response = await fetch('get_benevole.php?id=' + id);
+                const data = await response.json();
+                if (data.success) {
+                    document.getElementById('benevole').value = data.nom || '';
+                    document.getElementById('adresse_benevole').value = data.adresse || '';
+                    document.getElementById('cp_benevole').value = data.code_postal || '';
+                    document.getElementById('commune_benevole').value = data.commune || '';
+                    document.getElementById('secteur_benevole').value = data.secteur || '';
+                }
+            } catch (error) {
+                console.error('Erreur:', error);
+            }
+        }
+
+        function updateCPFromVille() {
+            const selectVille = document.getElementById('commune_destination');
+            const inputCP = document.getElementById('cp_destination');
+            const selectedOption = selectVille.options[selectVille.selectedIndex];
+            
+            if (selectedOption && selectedOption.value) {
+                const cp = selectedOption.getAttribute('data-cp');
+                inputCP.value = cp || '';
+            } else {
+                inputCP.value = '';
+            }
+        }
+
+        function calculerDuree() {
+            const depart = document.getElementById('heure_depart_mission').value;
+            const retour = document.getElementById('heure_retour_mission').value;
+            
+            if (depart && retour) {
+                const [hD, mD] = depart.split(':').map(Number);
+                const [hR, mR] = retour.split(':').map(Number);
+                
+                let minutesDepart = hD * 60 + mD;
+                let minutesRetour = hR * 60 + mR;
+                
+                if (minutesRetour < minutesDepart) {
+                    minutesRetour += 24 * 60;
+                }
+                
+                const diffMinutes = minutesRetour - minutesDepart;
+                const heures = Math.floor(diffMinutes / 60);
+                const minutes = diffMinutes % 60;
+                
+                const dureeText = `${heures.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
+                document.getElementById('dureeText').textContent = dureeText;
+                document.getElementById('dureeDisplay').style.display = 'block';
+            } else {
+                document.getElementById('dureeDisplay').style.display = 'none';
+            }
+        }
+
+        function confirmerSuppression() {
+            document.getElementById('confirmModal').style.display = 'block';
+        }
+
+        function fermerModal() {
+            document.getElementById('confirmModal').style.display = 'none';
+        }
+
+        function supprimerMission() {
+            document.getElementById('deleteForm').submit();
+        }
+
+        window.onclick = function(event) {
+            const modal = document.getElementById('confirmModal');
+            if (event.target == modal) {
+                fermerModal();
+            }
+        }
+
+        document.addEventListener('keydown', function(event) {
+            if (event.key === 'Escape') {
+                fermerModal();
+            }
+        });
+
+        window.addEventListener('DOMContentLoaded', function() {
+            calculerDuree();
+        });
+    </script>
+</body>
+</html>

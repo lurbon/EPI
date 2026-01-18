@@ -1,0 +1,17 @@
+Ajout de colonnes
+
+Mises à jour des id et secteur
+
+
+
+
+UPDATE EPI_mission m
+INNER JOIN EPI_aide a ON m.nom = a.aide
+SET m.id_aide = a.id_aide
+WHERE m.id_aide IS NULL OR m.id_aide = 0;
+
+
+UPDATE EPI_mission m
+INNER JOIN EPI_benevole a ON m.benevole = a.nom
+SET m.id_benevole = a.id_benevole
+WHERE m.id_benevole IS NULL OR m.id_aide = 0;
