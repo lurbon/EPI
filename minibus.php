@@ -398,6 +398,88 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             transform: none;
         }
         
+        .btn-print-group {
+            padding: 6px 12px;
+            background: linear-gradient(135deg, #2196F3 0%, #1976D2 100%);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 0.7rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-family: 'Inter', sans-serif;
+            width: 100%;
+            margin-top: 8px;
+        }
+        
+        .btn-print-group:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(33, 150, 243, 0.4);
+        }
+        
+        /* Styles pour l'impression */
+        @media print {
+            @page {
+                size: A4;
+                margin: 15mm;
+            }
+            
+            body > *:not(#print-area) {
+                display: none !important;
+            }
+            
+            #print-area {
+                display: block !important;
+                position: relative;
+                width: 100%;
+                page-break-after: avoid;
+            }
+            
+            .print-header {
+                text-align: left;
+                margin-bottom: 15px;
+                padding-bottom: 10px;
+            }
+            
+            .print-title {
+                font-size: 18px;
+                font-weight: bold;
+                margin-bottom: 3px;
+            }
+            
+            .print-subtitle {
+                font-size: 14px;
+                color: #333;
+                margin-bottom: 3px;
+            }
+            
+            .print-table {
+                width: 100%;
+                border-collapse: collapse;
+                margin-top: 10px;
+            }
+            
+            .print-table td {
+                border: 1px solid #333;
+                padding: 8px;
+                text-align: left;
+                font-size: 11px;
+                line-height: 1.4;
+                page-break-inside: avoid;
+            }
+            
+            .print-chauffeur {
+                margin-top: 15px;
+                padding: 8px;
+                border: 2px solid #333;
+                font-size: 13px;
+                font-weight: bold;
+                text-align: left;
+                page-break-inside: avoid;
+            }
+        }
+        
         .name-cell {
             width: 100px;
         }
@@ -609,6 +691,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             </table>
         </div>
     </div>
+
+    <!-- Zone d'impression -->
+    <div id="print-area"></div>
+
+    <style>
+        @media screen {
+            #print-area {
+                display: none;
+            }
+        }
+    </style>
 
     <script>
         // Variables globales
@@ -1079,6 +1172,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         });
                         
                         containerChauffeur.appendChild(btnSave);
+                        
+                        // Bouton Imprimer sous le bouton Enregistrer
+                        const btnPrint = document.createElement('button');
+                        btnPrint.className = 'btn-print-group';
+                        btnPrint.textContent = '🖨️ Imprimer';
+                        btnPrint.dataset.date = event.date;
+                        btnPrint.dataset.activite = event.activite;
+                        btnPrint.dataset.jour = event.jour;
+                        btnPrint.addEventListener('click', function() {
+                            imprimerParticipants(event.date, event.activite, event.jour, selectChauffeur.value);
+                        });
+                        
+                        containerChauffeur.appendChild(btnPrint);
                         tdChauffeur.appendChild(containerChauffeur);
                         tr.appendChild(tdChauffeur);
                     }
@@ -1288,6 +1394,89 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 button.disabled = false;
                 button.textContent = originalText;
             }
+        }
+        
+        function imprimerParticipants(date, activite, jour, chauffeur) {
+            // Collecter les participants pour cette activité
+            const rows = document.querySelectorAll(`tr[data-date="${date}"][data-activite="${activite}"]`);
+            const participants = [];
+            
+            rows.forEach(row => {
+                const participantSelect = row.querySelector('.participant-select');
+                const participant = participantSelect ? participantSelect.value : '';
+                
+                if (participant) {
+                    participants.push({
+                        nom: participant,
+                        adresse: row.querySelector('.adresse-ligne1')?.value || '',
+                        cp: row.querySelector('.adresse-ligne2 input:first-child')?.value || '',
+                        ville: row.querySelector('.adresse-ligne2 input:last-child')?.value || '',
+                        telFixe: row.querySelector('.tel-fixe-col input')?.value || '',
+                        telMobile: row.querySelector('.tel-mobile-col input')?.value || ''
+                    });
+                }
+            });
+            
+            if (participants.length === 0) {
+                afficherMessage('⚠️ Aucun participant à imprimer pour cette activité', 'warning');
+                return;
+            }
+            
+            // Créer le contenu d'impression
+            const printArea = document.getElementById('print-area');
+            
+            // Déterminer l'icône selon l'activité
+            let icone = '';
+            let activiteAffichee = activite;
+            if (activite === 'Courses grandes surfaces') {
+                activiteAffichee = 'Grandes surfaces';
+                icone = '🛒';
+            } else if (activite === 'Jardin des saveurs') {
+                activiteAffichee = 'Jardin des saveurs';
+                icone = '🌿';
+            } else if (activite === 'Cinéma') {
+                activiteAffichee = 'Cinéma St-Renan';
+                icone = '🎬';
+            }
+            
+            let html = `
+                <div class="print-header">
+                    <div class="print-title">${jour} ${date}</div>
+                    <div class="print-subtitle">${icone} ${activiteAffichee}</div>
+                </div>
+            `;
+            
+            html += `
+                <table class="print-table">
+                    <tbody>
+            `;
+            
+            participants.forEach((p, index) => {
+                html += `
+                    <tr>
+                        <td style="width: 200px; vertical-align: top;"><strong>${p.nom}</strong></td>
+                        <td style="vertical-align: top;">
+                            ${p.adresse}<br>
+                            ${p.cp} ${p.ville}<br>
+                            ${p.telFixe ? 'Fixe : ' + p.telFixe : ''}${p.telFixe && p.telMobile ? '<br>' : ''}${p.telMobile ? 'Mobile : ' + p.telMobile : ''}
+                        </td>
+                    </tr>
+                `;
+            });
+            
+            html += `
+                    </tbody>
+                </table>
+            `;
+            
+            if (chauffeur) {
+                html += `<div class="print-chauffeur">Chauffeur : ${chauffeur}</div>`;
+            }
+            
+            printArea.innerHTML = html;
+            
+            // Lancer l'impression
+            window.print();
         }
         
         function afficherMessage(message, type) {

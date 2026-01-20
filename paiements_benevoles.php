@@ -444,7 +444,7 @@ try {
     <a href="dashboard.php" class="back-link">← Retour au dashboard</a>
 
     <div class="container">
-        <h1>💰 Gestion des Paiements</h1>
+        <h1>💰 Cotisations bénévoles</h1>
 
         <?php if($message): ?>
             <div class="message <?php echo $messageType; ?>">
