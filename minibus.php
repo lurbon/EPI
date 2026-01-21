@@ -2,7 +2,7 @@
 // Charger la configuration WordPress
 require_once('wp-config.php');
 require_once('auth.php');
-verifierRole('admin');
+verifierRole(['admin', 'chauffeur','gestionnaire']);
 
 // Connexion à la base de données
 $serveur = DB_HOST;
@@ -652,7 +652,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <h1>🚌 Calendrier Minibus 2026</h1>
         
         <div class="controls">
-            <button onclick="window.close()" class="btn btn-primary">✖ Fermer</button>
+            <button onclick="window.location.href='dashboard.php'" class="btn btn-primary">← Retour au dashboard</button>
         </div>
         
         <div class="legend">
@@ -942,9 +942,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             tbody.innerHTML = '';
             
             // Filtrer le calendrier : afficher seulement 2,5 mois à partir d'aujourd'hui
-            const aujourdhui = new Date();
+            //const aujourdhui = new Date();
+			const hier = new Date();
+			hier.setDate(hier.getDate() - 1);
             const dans2moisEtDemi = new Date();
-            dans2moisEtDemi.setMonth(dans2moisEtDemi.getMonth() + 2);
+            dans2moisEtDemi.setMonth(dans2moisEtDemi.getMonth() + 1);
             dans2moisEtDemi.setDate(dans2moisEtDemi.getDate() + 15); // Ajouter 15 jours pour faire 2,5 mois
             
             const calendrierFiltre = calendrier2026.filter(event => {
@@ -958,10 +960,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 }
                 
                 // Garder seulement les événements entre aujourd'hui et dans 2,5 mois
-                return dateEvent >= aujourdhui && dateEvent <= dans2moisEtDemi;
+                return dateEvent >= hier && dateEvent <= dans2moisEtDemi;
             });
             
-            console.log(`📅 Affichage de ${calendrierFiltre.length} événements (du ${aujourdhui.toLocaleDateString('fr-FR')} au ${dans2moisEtDemi.toLocaleDateString('fr-FR')})`);
+            console.log(`📅 Affichage de ${calendrierFiltre.length} événements (du ${hier.toLocaleDateString('fr-FR')} au ${dans2moisEtDemi.toLocaleDateString('fr-FR')})`);
             
             calendrierFiltre.forEach((event, index) => {
                 const classeJour = event.jour.toLowerCase();

@@ -344,7 +344,7 @@ if (!$utilisateur || !$token) {
 				
 
             </div>
-						  <a href="img/photo.jpg" target="_blank" title="Voir le monstre">
+						  <a href="img/photo.jpg" title="Voir le monstre">
 				<img src="img/cam.jpg" width="60" height="60" alt="" ></a>
             <button class="btn-logout" id="logout">🚪 Déconnexion</button>
         </div>
@@ -451,7 +451,7 @@ if (!$utilisateur || !$token) {
         function createMenuCard(icon, title,description,  href, onclick) {
             if (href) {
                 return `
-                    <a href="${href}" class="menu-card" style="text-decoration: none;" target="_blank">
+                    <a href="${href}" class="menu-card" style="text-decoration: none;">
                         <div class="menu-card-icon">${icon}</div>
                         <div class="menu-card-title">${title}</div>
                        
@@ -486,9 +486,11 @@ if (!$utilisateur || !$token) {
 
             const roles = Array.isArray(user.roles) ? user.roles : [user.roles];
             const isAdmin = roles.includes('admin');
+            const isGestionnaire = roles.includes('gestionnaire');
             const isBenevole = roles.includes('benevole');
+            const isChauffeur = roles.includes('chauffeur');
 
-            // INTERFACE ADMINISTRATEUR
+            // INTERFACE ADMINISTRATEUR (accès complet)
             if (isAdmin) {
                 document.getElementById('mainBlockTitle').textContent = 'Saisies et modifications';
                 document.getElementById('mainBlockGrid').innerHTML = `
@@ -519,6 +521,38 @@ if (!$utilisateur || !$token) {
                      ${createMenuCard('🚌', 'Minibus',   null,'minibus.php')}
 					${createMenuCard('👤', 'Adhésion bénévole',  null,'paiements_benevoles.php')}
                    ${createMenuCard('👤', 'Adhésion aidé', null,'paiements_aides.php')}
+                `;
+            }
+
+            // INTERFACE GESTIONNAIRE (sans accès aux adhésions)
+            else if (isGestionnaire) {
+                document.getElementById('mainBlockTitle').textContent = 'Saisies et modifications';
+                document.getElementById('mainBlockGrid').innerHTML = `
+                    ${createMenuCard('👤', 'Nouveau bénévole', null, 'formulaire_benevole.php')}
+                    ${createMenuCard('🤝', 'Nouvel aidé', null, 'formulaire_aide.php')}
+                    ${createMenuCard('📋', 'Nouvelle mission', null,  'formulaire_mission.php')}
+                    ${createMenuCard('✏', 'Modifier un bénévole', null, 'modifier_benevole.php')}
+                    ${createMenuCard('✏', 'Modifier un aidé', 'Inscription', 'modifier_aide.php')}
+                    ${createMenuCard('✏', 'Modifier une mission', 'Rapports','modifier_mission.php')}
+                `;
+
+                document.getElementById('secondaryBlockTitle').textContent = 'Gestion des missions';
+                document.getElementById('secondaryBlockGrid').innerHTML = `
+                    ${createMenuCard('❓', 'Mission sans bénévole', null,'missions_sans_benevoles.php')}
+                    ${createMenuCard('🚗⌚', 'Saisie des KM et heures', null, 'saisie_km.php')}
+                `;
+
+                document.getElementById('infoBlockTitle').textContent = 'Listes';
+                document.getElementById('infoBlockGrid').innerHTML = `
+                     ${createMenuCard('📝', 'Liste des missions',   null,'liste_missions.php')}
+					${createMenuCard('👤', 'Liste des aidés',  null,'liste_aides.php')}
+                   ${createMenuCard('👤', 'Liste des bénévoles', null, 'liste_benevoles.php')}
+                   
+                `;
+
+                document.getElementById('statsBlockTitle').textContent = 'Autres actions';
+                document.getElementById('statsBlockGrid').innerHTML = `
+                     ${createMenuCard('🚌', 'Minibus',   null,'minibus.php')}
                 `;
             }
 
@@ -561,7 +595,7 @@ if (!$utilisateur || !$token) {
                         <img src="img/Logo-Entraide-Plus-Iroise.jpg" alt="Logo" style="width: 180px; height: auto; object-fit: contain;">
                     </div>
                     <div style="display: grid; grid-template-columns: 1fr; gap: 12px;">
-                        <div style="color: #667eea; font-size: 24px; font-weight: 800; margin-bottom: 10px;">Annuaire</div>
+                        <div style="color: #667eea; font-size: 24px; font-weight: 800; margin-bottom: 10px;">Listes</div>
                         ${createMenuCard('👤', 'Bénévoles', null, 'liste_benevoles.php')}
                         ${createMenuCard('🤝', 'Personnes Aidées', null, 'liste_aides.php')}
                     </div>
@@ -569,6 +603,74 @@ if (!$utilisateur || !$token) {
 
                 // Masquer les blocs non utilisés pour les bénévoles
                 document.getElementById('infoBlock').style.display = 'none';
+                document.getElementById('statsBlock').style.display = 'none';
+            }
+
+            // INTERFACE CHAUFFEUR (même accès que bénévole + minibus)
+            else if (isChauffeur) {
+                // Ajouter la classe pour layout côte à côte avec hauteurs égales
+                document.querySelector('.top-section').classList.add('benevole-layout');
+                
+                // Restructurer le bloc principal (Gestion des missions)
+                document.getElementById('mainBlock').querySelector('.header-section').style.display = 'none';
+                
+                document.getElementById('mainBlockGrid').style.display = 'grid';
+                document.getElementById('mainBlockGrid').style.gridTemplateColumns = '200px 1fr';
+                document.getElementById('mainBlockGrid').style.gap = '20px';
+                document.getElementById('mainBlockGrid').style.alignItems = 'center';
+                document.getElementById('mainBlockGrid').style.flex = '1';
+                
+                document.getElementById('mainBlockGrid').innerHTML = `
+                    <div style="display: flex; justify-content: center; align-items: center;">
+                        <img src="img/Logo-Entraide-Plus-Iroise.jpg" alt="Logo" style="width: 180px; height: auto; object-fit: contain;">
+                    </div>
+                    <div style="display: grid; grid-template-columns: 1fr; gap: 12px;">
+                        <div style="color: #667eea; font-size: 24px; font-weight: 800; margin-bottom: 10px;">Gestion des missions</div>
+                        ${createMenuCard('❓', 'Missions sans bénévole', null,'missions_sans_benevoles.php')}
+                        ${createMenuCard('🚗⌚', 'Saisie KM et heures', null, 'saisie_km.php')}
+                    </div>
+                `;
+                
+                // Restructurer le bloc secondaire (Annuaire)
+                document.getElementById('secondaryBlock').querySelector('.header-section').style.display = 'none';
+                
+                document.getElementById('secondaryBlockGrid').style.display = 'grid';
+                document.getElementById('secondaryBlockGrid').style.gridTemplateColumns = '200px 1fr';
+                document.getElementById('secondaryBlockGrid').style.gap = '20px';
+                document.getElementById('secondaryBlockGrid').style.alignItems = 'center';
+                document.getElementById('secondaryBlockGrid').style.flex = '1';
+                
+                document.getElementById('secondaryBlockGrid').innerHTML = `
+                    <div style="display: flex; justify-content: center; align-items: center;">
+                        <img src="img/Logo-Entraide-Plus-Iroise.jpg" alt="Logo" style="width: 180px; height: auto; object-fit: contain;">
+                    </div>
+                    <div style="display: grid; grid-template-columns: 1fr; gap: 12px;">
+                        <div style="color: #667eea; font-size: 24px; font-weight: 800; margin-bottom: 10px;">Listes</div>
+                        ${createMenuCard('👤', 'Liste des bénévoles', null, 'liste_benevoles.php')}
+                        ${createMenuCard('🤝', 'Liste des aidés', null, 'liste_aides.php')}
+                    </div>
+                `;
+
+                // Ajouter le minibus dans le bloc info avec logo à gauche
+                document.getElementById('infoBlock').querySelector('.header-section').style.display = 'none';
+                
+                document.getElementById('infoBlockGrid').style.display = 'grid';
+                document.getElementById('infoBlockGrid').style.gridTemplateColumns = '200px 1fr';
+                document.getElementById('infoBlockGrid').style.gap = '20px';
+                document.getElementById('infoBlockGrid').style.alignItems = 'center';
+                document.getElementById('infoBlockGrid').style.flex = '1';
+                
+                document.getElementById('infoBlockGrid').innerHTML = `
+                    <div style="display: flex; justify-content: center; align-items: center;">
+                        <img src="img/Logo-Entraide-Plus-Iroise.jpg" alt="Logo" style="width: 180px; height: auto; object-fit: contain;">
+                    </div>
+                    <div style="display: grid; grid-template-columns: 1fr; gap: 12px;">
+                        <div style="color: #667eea; font-size: 24px; font-weight: 800; margin-bottom: 10px;">Autres actions</div>
+                        ${createMenuCard('🚌', 'Minibus', null, 'minibus.php')}
+                    </div>
+                `;
+
+                // Masquer le bloc stats non utilisé pour les chauffeurs
                 document.getElementById('statsBlock').style.display = 'none';
             }
 

@@ -31,8 +31,13 @@ try {
 // Récupérer les aidés pour la liste déroulante
 $aides = [];
 try {
-    $stmt = $conn->query("SELECT id_aide, nom FROM EPI_aide ORDER BY nom");
+    $stmt = $conn->query("SELECT id_aide, nom, adresse, code_postal, commune, secteur, tel_fixe, tel_portable FROM EPI_aide ORDER BY nom");
     $aides = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    // Renommer les clés pour la compatibilité avec le JavaScript
+    foreach($aides as &$aide) {
+        $aide['telephone'] = isset($aide['tel_fixe']) ? $aide['tel_fixe'] : '';
+        $aide['telephone_2'] = isset($aide['tel_portable']) ? $aide['tel_portable'] : '';
+    }
 } catch(PDOException $e) {}
 
 // Récupérer les types d'intervention depuis la table EPI_intervention
@@ -410,11 +415,23 @@ $dateJour = date('Y-m-d');
                     <option value="">-- Choisissez un aidé --</option>
                     <?php foreach($aides as $a): ?>
                         <option value="<?php echo $a['id_aide']; ?>"
-                                data-nom="<?php echo htmlspecialchars($a['nom']); ?>">
+                                data-nom="<?php echo htmlspecialchars($a['nom']); ?>"
+                                data-adresse="<?php echo htmlspecialchars($a['adresse']); ?>"
+                                data-cp="<?php echo htmlspecialchars($a['code_postal']); ?>"
+                                data-commune="<?php echo htmlspecialchars($a['commune']); ?>"
+                                data-secteur="<?php echo htmlspecialchars($a['secteur']); ?>"
+                                data-telephone="<?php echo htmlspecialchars($a['telephone']); ?>"
+                                data-telephone2="<?php echo htmlspecialchars($a['telephone_2']); ?>">
                             <?php echo htmlspecialchars($a['nom']); ?>
                         </option>
                     <?php endforeach; ?>
                 </select>
+            </div>
+
+            <!-- Affichage des informations de l'aidé -->
+            <div id="infos_aide_display" style="display: none; margin-top: -10px; margin-bottom: 20px; padding: 15px; background-color: #f0f8ff; border-left: 4px solid #667eea; border-radius: 4px;">
+                <div id="aide_adresse_display" style="color: #555; margin-bottom: 8px;"></div>
+                <div id="aide_telephones_display" style="color: #555;"></div>
             </div>
 
             <input type="hidden" id="aide" name="aide">
@@ -586,38 +603,119 @@ $dateJour = date('Y-m-d');
         async function chargerInfosAide(id) {
             if (!id) {
                 document.getElementById('info_aide').style.display = 'none';
+                document.getElementById('infos_aide_display').style.display = 'none';
                 aideDataLoading = false;
                 return;
             }
 
             aideDataLoading = true;
 
+            // Récupérer les données depuis les attributs data- de l'option sélectionnée
+            const select = document.getElementById('id_aide');
+            const option = select.options[select.selectedIndex];
+            
+            const nom = option.dataset.nom || '';
+            const adresse = option.dataset.adresse || '';
+            const cp = option.dataset.cp || '';
+            const commune = option.dataset.commune || '';
+            const secteur = option.dataset.secteur || '';
+            const telephone = option.dataset.telephone || '';
+            const telephone2 = option.dataset.telephone2 || '';
+
             try {
                 const response = await fetch('get_aide.php?id=' + id);
                 const data = await response.json();
                 
                 if (data.success) {
-                    document.getElementById('aide').value = data.nom || '';
-                    document.getElementById('adresse_aide').value = data.adresse || '';
-                    document.getElementById('cp_aide').value = data.code_postal || '';
-                    document.getElementById('commune_aide').value = data.commune || '';
-                    document.getElementById('secteur_aide').value = data.secteur || '';
+                    document.getElementById('aide').value = data.nom || nom;
+                    document.getElementById('adresse_aide').value = data.adresse || adresse;
+                    document.getElementById('cp_aide').value = data.code_postal || cp;
+                    document.getElementById('commune_aide').value = data.commune || commune;
+                    document.getElementById('secteur_aide').value = data.secteur || secteur;
                     
-                    const adresseComplete = (data.adresse || '') + ', ' + 
-                                          (data.code_postal || '') + ' ' + 
-                                          (data.commune || '');
+                    const adresseComplete = (data.adresse || adresse) + ', ' + 
+                                          (data.code_postal || cp) + ' ' + 
+                                          (data.commune || commune);
                     document.getElementById('affichage_adresse_aide').textContent = adresseComplete;
                     document.getElementById('info_aide').style.display = 'block';
+                    
+                    // Afficher l'adresse complète avec CP et commune
+                    const adresseAffichage = (data.adresse || adresse) + 
+                                           (cp ? ', ' + cp : '') + 
+                                           (commune ? ' ' + commune : '');
+                    if (adresseAffichage) {
+                        document.getElementById('aide_adresse_display').innerHTML = '📍 ' + adresseAffichage;
+                    }
+                    
+                    // Afficher les téléphones avec des icônes distinctes
+                    let telephonesHTML = '';
+                    if (telephone) {
+                        telephonesHTML = '☎️ Fixe : <strong>' + telephone + '</strong>';
+                    }
+                    if (telephone2) {
+                        telephonesHTML += (telephone ? '<span style="margin: 0 10px;">|</span>' : '') + 
+                                         '📱 Portable : <strong>' + telephone2 + '</strong>';
+                    }
+                    if (telephonesHTML) {
+                        document.getElementById('aide_telephones_display').innerHTML = telephonesHTML;
+                        document.getElementById('infos_aide_display').style.display = 'block';
+                    }
                 } else {
-                    const select = document.getElementById('id_aide');
-                    const option = select.options[select.selectedIndex];
-                    document.getElementById('aide').value = option.dataset.nom;
+                    document.getElementById('aide').value = nom;
+                    document.getElementById('adresse_aide').value = adresse;
+                    document.getElementById('cp_aide').value = cp;
+                    document.getElementById('commune_aide').value = commune;
+                    document.getElementById('secteur_aide').value = secteur;
+                    
+                    // Afficher l'adresse et téléphones même en cas d'erreur API
+                    const adresseAffichage = adresse + 
+                                           (cp ? ', ' + cp : '') + 
+                                           (commune ? ' ' + commune : '');
+                    if (adresseAffichage) {
+                        document.getElementById('aide_adresse_display').innerHTML = '📍 ' + adresseAffichage;
+                    }
+                    
+                    let telephonesHTML = '';
+                    if (telephone) {
+                        telephonesHTML = '☎️ Fixe : <strong>' + telephone + '</strong>';
+                    }
+                    if (telephone2) {
+                        telephonesHTML += (telephone ? '<span style="margin: 0 10px;">|</span>' : '') + 
+                                         '📱 Portable : <strong>' + telephone2 + '</strong>';
+                    }
+                    if (telephonesHTML) {
+                        document.getElementById('aide_telephones_display').innerHTML = telephonesHTML;
+                        document.getElementById('infos_aide_display').style.display = 'block';
+                    }
                 }
             } catch (error) {
                 console.error('Erreur:', error);
-                const select = document.getElementById('id_aide');
-                const option = select.options[select.selectedIndex];
-                document.getElementById('aide').value = option.dataset.nom;
+                document.getElementById('aide').value = nom;
+                document.getElementById('adresse_aide').value = adresse;
+                document.getElementById('cp_aide').value = cp;
+                document.getElementById('commune_aide').value = commune;
+                document.getElementById('secteur_aide').value = secteur;
+                
+                // Afficher l'adresse et téléphones depuis les data-attributes
+                const adresseAffichage = adresse + 
+                                       (cp ? ', ' + cp : '') + 
+                                       (commune ? ' ' + commune : '');
+                if (adresseAffichage) {
+                    document.getElementById('aide_adresse_display').innerHTML = '📍 ' + adresseAffichage;
+                }
+                
+                let telephonesHTML = '';
+                if (telephone) {
+                    telephonesHTML = '☎️ Fixe : <strong>' + telephone + '</strong>';
+                }
+                if (telephone2) {
+                    telephonesHTML += (telephone ? '<span style="margin: 0 10px;">|</span>' : '') + 
+                                     '📱 Portable : <strong>' + telephone2 + '</strong>';
+                }
+                if (telephonesHTML) {
+                    document.getElementById('aide_telephones_display').innerHTML = telephonesHTML;
+                    document.getElementById('infos_aide_display').style.display = 'block';
+                }
             } finally {
                 aideDataLoading = false;
             }

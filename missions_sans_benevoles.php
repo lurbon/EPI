@@ -2,7 +2,7 @@
 // Charger la configuration WordPress
 require_once('wp-config.php');
 require_once('auth.php');
-verifierRole(['admin', 'benevole']);
+verifierRole(['admin']);
 
 $serveur = DB_HOST;
 $utilisateur = DB_USER;

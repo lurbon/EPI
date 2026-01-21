@@ -2,7 +2,7 @@
 // Charger la configuration WordPress
 require_once('wp-config.php');
 require_once('auth.php');
-verifierRole(['admin', 'benevole']);
+verifierRole(['admin']);
 
 // Connexion à la base de données
 $serveur = DB_HOST;
@@ -505,7 +505,7 @@ try {
     </style>
 </head>
 <body>
-    <a href="#" onclick="window.close(); return false;" class="back-link">← Fermer</a>
+    <a href="dashboard.php" class="back-link">← Retour au dashboard</a>
 
     <div class="container">
         <h1>🚗 Saisie des Kilomètres et Heures</h1>

@@ -22,9 +22,39 @@ try {
 // Récupérer les bénévoles
 $benevoles = [];
 try {
-    $stmt = $conn->query("SELECT id_benevole, nom FROM EPI_benevole ORDER BY nom");
+    $stmt = $conn->query("SELECT id_benevole, nom, adresse, code_postal, commune, tel_fixe, tel_mobile FROM EPI_benevole ORDER BY nom");
     $benevoles = $stmt->fetchAll(PDO::FETCH_ASSOC);
-} catch(PDOException $e) {}
+    // Renommer tel_mobile en tel_portable pour compatibilité avec le code
+    foreach($benevoles as &$b) {
+        $b['tel_portable'] = isset($b['tel_mobile']) ? $b['tel_mobile'] : '';
+    }
+} catch(PDOException $e) {
+    // Si erreur (champs manquants), essayer avec seulement les champs de base
+    try {
+        $stmt = $conn->query("SELECT id_benevole, nom, adresse FROM EPI_benevole ORDER BY nom");
+        $benevoles = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        // Ajouter les champs manquants vides
+        foreach($benevoles as &$b) {
+            if (!isset($b['code_postal'])) $b['code_postal'] = '';
+            if (!isset($b['commune'])) $b['commune'] = '';
+            if (!isset($b['tel_fixe'])) $b['tel_fixe'] = '';
+            $b['tel_portable'] = '';
+        }
+    } catch(PDOException $e2) {
+        // En dernier recours, juste id et nom
+        try {
+            $stmt = $conn->query("SELECT id_benevole, nom FROM EPI_benevole ORDER BY nom");
+            $benevoles = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            foreach($benevoles as &$b) {
+                $b['adresse'] = '';
+                $b['code_postal'] = '';
+                $b['commune'] = '';
+                $b['tel_fixe'] = '';
+                $b['tel_portable'] = '';
+            }
+        } catch(PDOException $e3) {}
+    }
+}
 
 // Récupérer les villes
 $villes = [];
@@ -42,16 +72,27 @@ try {
 
 // Récupérer les infos complètes de l'aidé pour la mission en cours
 $aideInfo = null;
+$benevoleInfo = null;
 if (isset($_GET['id'])) {
     try {
-        $stmt = $conn->prepare("SELECT m.id_aide FROM EPI_mission m WHERE m.id_mission = :id");
+        $stmt = $conn->prepare("SELECT m.id_aide, m.id_benevole FROM EPI_mission m WHERE m.id_mission = :id");
         $stmt->execute([':id' => $_GET['id']]);
         $missionData = $stmt->fetch(PDO::FETCH_ASSOC);
         
         if ($missionData && $missionData['id_aide']) {
-            $stmt = $conn->prepare("SELECT tel_fixe, tel_portable FROM EPI_aide WHERE id_aide = :id");
+            $stmt = $conn->prepare("SELECT adresse, code_postal, commune, tel_fixe, tel_portable FROM EPI_aide WHERE id_aide = :id");
             $stmt->execute([':id' => $missionData['id_aide']]);
             $aideInfo = $stmt->fetch(PDO::FETCH_ASSOC);
+        }
+        
+        if ($missionData && $missionData['id_benevole']) {
+            $stmt = $conn->prepare("SELECT adresse, code_postal, commune, tel_fixe, tel_mobile FROM EPI_benevole WHERE id_benevole = :id");
+            $stmt->execute([':id' => $missionData['id_benevole']]);
+            $benevoleInfo = $stmt->fetch(PDO::FETCH_ASSOC);
+            // Renommer tel_mobile en tel_portable pour compatibilité
+            if ($benevoleInfo && isset($benevoleInfo['tel_mobile'])) {
+                $benevoleInfo['tel_portable'] = $benevoleInfo['tel_mobile'];
+            }
         }
     } catch(PDOException $e) {}
 }
@@ -724,40 +765,43 @@ if (isset($_GET['success'])) {
                        value="<?php echo htmlspecialchars($mission['aide']); ?>">
             </div>
 
+            <!-- Affichage des informations de l'aidé -->
+            <?php 
+            // Utiliser l'adresse de EPI_mission, sinon celle de EPI_aide
+            $adresseAide = !empty($mission['adresse_aide']) ? $mission['adresse_aide'] : ($aideInfo['adresse'] ?? '');
+            $cpAide = !empty($mission['cp_aide']) ? $mission['cp_aide'] : ($aideInfo['code_postal'] ?? '');
+            $communeAide = !empty($mission['commune_aide']) ? $mission['commune_aide'] : ($aideInfo['commune'] ?? '');
+            
+            if (!empty($adresseAide) || !empty($aideInfo['tel_fixe']) || !empty($aideInfo['tel_portable'])): 
+            ?>
+            <div style="margin-top: -10px; margin-bottom: 20px; padding: 15px; background-color: #f0f8ff; border-left: 4px solid #667eea; border-radius: 4px;">
+                <?php if (!empty($adresseAide)): ?>
+                <div style="color: #555; margin-bottom: 8px;">
+                    📍 <?php echo htmlspecialchars($adresseAide); 
+                        echo !empty($cpAide) ? ', ' . htmlspecialchars($cpAide) : ''; 
+                        echo !empty($communeAide) ? ' ' . htmlspecialchars($communeAide) : ''; ?>
+                </div>
+                <?php endif; ?>
+                <div style="color: #555;">
+                    <?php if (!empty($aideInfo['tel_fixe'])): ?>
+                        ☎️ Fixe : <strong><?php echo htmlspecialchars($aideInfo['tel_fixe']); ?></strong>
+                    <?php endif; ?>
+                    <?php if (!empty($aideInfo['tel_fixe']) && !empty($aideInfo['tel_portable'])): ?>
+                        <span style="margin: 0 10px;">|</span>
+                    <?php endif; ?>
+                    <?php if (!empty($aideInfo['tel_portable'])): ?>
+                        📱 Portable : <strong><?php echo htmlspecialchars($aideInfo['tel_portable']); ?></strong>
+                    <?php endif; ?>
+                </div>
+            </div>
+            <?php endif; ?>
+
             <input type="hidden" id="aide" name="aide" value="<?php echo htmlspecialchars($mission['aide']); ?>">
             <input type="hidden" id="id_aide" name="id_aide" value="<?php echo $mission['id_aide']; ?>">
+            <input type="hidden" id="adresse_aide" name="adresse_aide" value="<?php echo htmlspecialchars($mission['adresse_aide']); ?>">
+            <input type="hidden" id="cp_aide" name="cp_aide" value="<?php echo htmlspecialchars($mission['cp_aide']); ?>">
+            <input type="hidden" id="commune_aide" name="commune_aide" value="<?php echo htmlspecialchars($mission['commune_aide']); ?>">
             <input type="hidden" id="secteur_aide" name="secteur_aide" value="<?php echo htmlspecialchars($mission['secteur_aide']); ?>">
-
-            <div class="row">
-                <div class="form-group">
-                    <label for="adresse_aide">Adresse</label>
-                    <input type="text" id="adresse_aide" name="adresse_aide" readonly
-                           value="<?php echo htmlspecialchars($mission['adresse_aide']); ?>">
-                </div>
-                <div class="form-group">
-                    <label for="cp_aide">Code postal</label>
-                    <input type="text" id="cp_aide" name="cp_aide" readonly
-                           value="<?php echo htmlspecialchars($mission['cp_aide']); ?>">
-                </div>
-                <div class="form-group">
-                    <label for="commune_aide">Commune</label>
-                    <input type="text" id="commune_aide" name="commune_aide" readonly
-                           value="<?php echo htmlspecialchars($mission['commune_aide']); ?>">
-                </div>
-            </div>
-
-            <div class="row">
-                <div class="form-group">
-                    <label for="tel_fixe">📞 Téléphone fixe</label>
-                    <input type="tel" id="tel_fixe" readonly
-                           value="<?php echo htmlspecialchars($aideInfo['tel_fixe'] ?? ''); ?>">
-                </div>
-                <div class="form-group">
-                    <label for="tel_portable">📞 Téléphone portable</label>
-                    <input type="tel" id="tel_portable" readonly
-                           value="<?php echo htmlspecialchars($aideInfo['tel_portable'] ?? ''); ?>">
-                </div>
-            </div>
 
             <h3>📝 Nature de la Prestation</h3>
             <div class="form-group">
@@ -804,16 +848,27 @@ if (isset($_GET['success'])) {
             <h3>👤 Bénévole Assigné</h3>
             <div class="form-group">
                 <label for="id_benevole">Bénévole *</label>
-                <select id="id_benevole" name="id_benevole" >
+                <select id="id_benevole" name="id_benevole" onchange="chargerInfosBenevole(this.value)">
                     <option value="">-- Choisissez --</option>
                     <?php foreach($benevoles as $b): ?>
                         <option value="<?php echo $b['id_benevole']; ?>"
                                 data-nom="<?php echo htmlspecialchars($b['nom']); ?>"
+                                data-adresse="<?php echo htmlspecialchars($b['adresse']); ?>"
+                                data-cp="<?php echo htmlspecialchars($b['code_postal']); ?>"
+                                data-commune="<?php echo htmlspecialchars($b['commune']); ?>"
+                                data-tel-fixe="<?php echo htmlspecialchars($b['tel_fixe']); ?>"
+                                data-tel-portable="<?php echo htmlspecialchars($b['tel_portable']); ?>"
                                 <?php echo ($mission['id_benevole'] == $b['id_benevole']) ? 'selected' : ''; ?>>
                             <?php echo htmlspecialchars($b['nom']); ?>
                         </option>
                     <?php endforeach; ?>
                 </select>
+            </div>
+
+            <!-- Affichage des informations du bénévole -->
+            <div id="infos_benevole_display" style="display: none; margin-top: -10px; margin-bottom: 20px; padding: 15px; background-color: #fff3e6; border-left: 4px solid #ff9800; border-radius: 4px;">
+                <div id="benevole_adresse_display" style="color: #555; margin-bottom: 8px;"></div>
+                <div id="benevole_telephones_display" style="color: #555;"></div>
             </div>
 
             <input type="hidden" id="benevole" name="benevole" value="<?php echo htmlspecialchars($mission['benevole']); ?>">
@@ -905,19 +960,107 @@ if (isset($_GET['success'])) {
 
     <script>
         async function chargerInfosBenevole(id) {
-            if (!id) return;
+            if (!id) {
+                // Si on désélectionne le bénévole, vider les champs
+                document.getElementById('benevole').value = '';
+                document.getElementById('adresse_benevole').value = '';
+                document.getElementById('cp_benevole').value = '';
+                document.getElementById('commune_benevole').value = '';
+                document.getElementById('secteur_benevole').value = '';
+                document.getElementById('infos_benevole_display').style.display = 'none';
+                return;
+            }
+            
+            // Récupérer les données depuis les attributs data- de l'option sélectionnée
+            const select = document.getElementById('id_benevole');
+            const option = select.options[select.selectedIndex];
+            
+            const nom = option.dataset.nom || '';
+            const adresse = option.dataset.adresse || '';
+            const cp = option.dataset.cp || '';
+            const commune = option.dataset.commune || '';
+            const telFixe = option.dataset.telFixe || '';
+            const telPortable = option.dataset.telPortable || '';
+            
             try {
                 const response = await fetch('get_benevole.php?id=' + id);
                 const data = await response.json();
                 if (data.success) {
-                    document.getElementById('benevole').value = data.nom || '';
-                    document.getElementById('adresse_benevole').value = data.adresse || '';
-                    document.getElementById('cp_benevole').value = data.code_postal || '';
-                    document.getElementById('commune_benevole').value = data.commune || '';
+                    document.getElementById('benevole').value = data.nom || nom;
+                    document.getElementById('adresse_benevole').value = data.adresse || adresse;
+                    document.getElementById('cp_benevole').value = data.code_postal || cp;
+                    document.getElementById('commune_benevole').value = data.commune || commune;
                     document.getElementById('secteur_benevole').value = data.secteur || '';
+                    
+                    // Afficher l'adresse complète
+                    const adresseAffichage = (data.adresse || adresse) + 
+                                           (cp ? ', ' + cp : '') + 
+                                           (commune ? ' ' + commune : '');
+                    if (adresseAffichage) {
+                        document.getElementById('benevole_adresse_display').innerHTML = '📍 ' + adresseAffichage;
+                    }
+                    
+                    // Afficher les téléphones avec des icônes distinctes
+                    let telephonesHTML = '';
+                    if (telFixe) {
+                        telephonesHTML = '☎️ Fixe : <strong>' + telFixe + '</strong>';
+                    }
+                    if (telPortable) {
+                        telephonesHTML += (telFixe ? '<span style="margin: 0 10px;">|</span>' : '') + 
+                                         '📱 Portable : <strong>' + telPortable + '</strong>';
+                    }
+                    if (telephonesHTML) {
+                        document.getElementById('benevole_telephones_display').innerHTML = telephonesHTML;
+                        document.getElementById('infos_benevole_display').style.display = 'block';
+                    }
+                } else {
+                    // Fallback: utiliser les données du data-* si l'API échoue
+                    document.getElementById('benevole').value = nom;
+                    
+                    const adresseAffichage = adresse + 
+                                           (cp ? ', ' + cp : '') + 
+                                           (commune ? ' ' + commune : '');
+                    if (adresseAffichage) {
+                        document.getElementById('benevole_adresse_display').innerHTML = '📍 ' + adresseAffichage;
+                    }
+                    
+                    let telephonesHTML = '';
+                    if (telFixe) {
+                        telephonesHTML = '☎️ Fixe : <strong>' + telFixe + '</strong>';
+                    }
+                    if (telPortable) {
+                        telephonesHTML += (telFixe ? '<span style="margin: 0 10px;">|</span>' : '') + 
+                                         '📱 Portable : <strong>' + telPortable + '</strong>';
+                    }
+                    if (telephonesHTML) {
+                        document.getElementById('benevole_telephones_display').innerHTML = telephonesHTML;
+                        document.getElementById('infos_benevole_display').style.display = 'block';
+                    }
                 }
             } catch (error) {
                 console.error('Erreur:', error);
+                // Fallback: utiliser les données du data-* si erreur réseau
+                document.getElementById('benevole').value = nom;
+                
+                const adresseAffichage = adresse + 
+                                       (cp ? ', ' + cp : '') + 
+                                       (commune ? ' ' + commune : '');
+                if (adresseAffichage) {
+                    document.getElementById('benevole_adresse_display').innerHTML = '📍 ' + adresseAffichage;
+                }
+                
+                let telephonesHTML = '';
+                if (telFixe) {
+                    telephonesHTML = '☎️ Fixe : <strong>' + telFixe + '</strong>';
+                }
+                if (telPortable) {
+                    telephonesHTML += (telFixe ? '<span style="margin: 0 10px;">|</span>' : '') + 
+                                     '📱 Portable : <strong>' + telPortable + '</strong>';
+                }
+                if (telephonesHTML) {
+                    document.getElementById('benevole_telephones_display').innerHTML = telephonesHTML;
+                    document.getElementById('infos_benevole_display').style.display = 'block';
+                }
             }
         }
 
@@ -988,6 +1131,12 @@ if (isset($_GET['success'])) {
 
         window.addEventListener('DOMContentLoaded', function() {
             calculerDuree();
+            
+            // Charger les infos du bénévole si un bénévole est déjà sélectionné
+            const idBenevoleSelect = document.getElementById('id_benevole');
+            if (idBenevoleSelect && idBenevoleSelect.value) {
+                chargerInfosBenevole(idBenevoleSelect.value);
+            }
         });
     </script>
 </body>

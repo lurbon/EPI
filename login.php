@@ -151,7 +151,7 @@ $userData = [
 // Stocker dans la session
 $_SESSION['token'] = $jwtResponse['token'];
 $_SESSION['user'] = $userData;
-$_SESSION['token_expires_absolute'] = time() + 3600; // Expiration ABSOLUE - 1 heure (ne sera jamais renouvelée)
+$_SESSION['token_expires_absolute'] = time() + 10800; // Expiration ABSOLUE - 3 heures (renouvelée à chaque activité)
 $_SESSION['last_activity'] = time(); // Pour détecter l'inactivité
 $_SESSION['login_time'] = time();
 

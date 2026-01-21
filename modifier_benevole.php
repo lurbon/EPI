@@ -69,13 +69,15 @@ if (empty($moyensPaiement)) {
 // Traitement du formulaire de modification
 if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['id_benevole'])) {
     try {
-        // Formatage du nom
+        // Formatage du nom : NOM en majuscules, prénom(s) en minuscules avec initiale en majuscule
         $nomComplet = $_POST['nom'];
         if (strpos($nomComplet, ' ') !== false) {
             $premierEspace = strpos($nomComplet, ' ');
             $nom = substr($nomComplet, 0, $premierEspace);
             $prenoms = substr($nomComplet, $premierEspace + 1);
-            $nomComplet = strtoupper($nom) . ' ' . strtolower($prenoms);
+            // Mettre le nom en majuscules et le prénom en minuscules avec initiale en majuscule
+            $prenoms = ucfirst(strtolower($prenoms));
+            $nomComplet = strtoupper($nom) . ' ' . $prenoms;
         }
         
         $sql = "UPDATE EPI_benevole SET 
@@ -638,7 +640,9 @@ if (isset($_GET['success'])) {
                     const premierEspace = valeur.indexOf(' ');
                     const nom = valeur.substring(0, premierEspace);
                     const prenoms = valeur.substring(premierEspace + 1);
-                    this.value = nom.toUpperCase() + ' ' + prenoms.toLowerCase();
+                    // Mettre le nom en majuscules et le prénom en minuscules avec initiale en majuscule
+                    const prenomsFormates = prenoms.charAt(0).toUpperCase() + prenoms.slice(1).toLowerCase();
+                    this.value = nom.toUpperCase() + ' ' + prenomsFormates;
                 }
             });
         }
