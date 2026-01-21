@@ -3,8 +3,18 @@
  * Gestionnaire de connexion avec JWT et suivi des connexions
  */
 
+// Configuration sécurisée des sessions AVANT session_start()
+ini_set('session.cookie_httponly', 1);    // Cookie non accessible via JavaScript (protection XSS)
+ini_set('session.cookie_secure', 1);      // Cookie transmis uniquement via HTTPS
+ini_set('session.cookie_samesite', 'Strict'); // Protection CSRF au niveau cookie
+ini_set('session.use_strict_mode', 1);    // Refuse les ID de session non initialisés
+ini_set('session.use_only_cookies', 1);   // Pas d'ID de session dans l'URL
+
 // Démarrer la session
 session_start();
+
+// Inclure les headers de sécurité HTTP
+require_once(__DIR__ . '/security-headers.php');
 
 // Charger la configuration WordPress pour la connexion à la base de données
 require_once('wp-config.php');
@@ -147,6 +157,10 @@ $userData = [
     'username' => $jwtResponse['username'] ?? $jwtResponse['user_login'] ?? $username,
     'roles' => $userRoles
 ];
+
+// Régénérer l'ID de session pour prévenir les attaques de fixation de session
+// IMPORTANT : À faire AVANT de stocker les données sensibles
+session_regenerate_id(true);
 
 // Stocker dans la session
 $_SESSION['token'] = $jwtResponse['token'];

@@ -120,58 +120,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
         exit;
     }
-
-    if ($action === 'saveMinibusData') {
-        try {
-            $donnees = $input['donnees'] ?? [];
-            
-            // Fonction pour convertir date française (dd/mm/yyyy) vers MySQL (yyyy-mm-dd)
-            function convertirDateFrVersMySQL($dateFr) {
-                if (empty($dateFr)) return null;
-                $parts = explode('/', $dateFr);
-                if (count($parts) !== 3) return null;
-                return $parts[2] . '-' . $parts[1] . '-' . $parts[0];
-            }
-            
-            // Vider la table avant d'insérer les nouvelles données
-            $conn->exec("DELETE FROM EPI_minibus");
-            
-            // Préparer la requête d'insertion
-            $stmt = $conn->prepare("INSERT INTO EPI_minibus 
-                (date, Activite, participant, adresse, cp, commune, tel_fixe, tel_mobile, chauffeur) 
-                VALUES (:date, :activite, :participant, :adresse, :cp, :commune, :tel_fixe, :tel_mobile, :chauffeur)");
-            
-            $inserted = 0;
-            foreach ($donnees as $ligne) {
-                // Insérer si un participant est sélectionné OU si un chauffeur est sélectionné (même sans participant)
-                if (!empty($ligne['participants']) || !empty($ligne['chauffeur'])) {
-                    $dateMySQL = convertirDateFrVersMySQL($ligne['date']);
-                    
-                    $stmt->execute([
-                        ':date' => $dateMySQL,
-                        ':activite' => $ligne['activite'],
-                        ':participant' => $ligne['participants'] ?? '',
-                        ':adresse' => $ligne['adresse'] ?? '',
-                        ':cp' => $ligne['cp'] ?? '',
-                        ':commune' => $ligne['ville'] ?? '',
-                        ':tel_fixe' => $ligne['telFixe'] ?? '',
-                        ':tel_mobile' => $ligne['telMobile'] ?? '',
-                        ':chauffeur' => $ligne['chauffeur'] ?? ''
-                    ]);
-                    $inserted++;
-                }
-            }
-            
-            echo json_encode([
-                'success' => true,
-                'message' => "$inserted lignes enregistrées avec succès"
-            ]);
-        } catch(PDOException $e) {
-            echo json_encode(['error' => $e->getMessage()]);
-        }
-        exit;
-    }
+    
+    // Note: La fonction 'saveMinibusData' a été supprimée car elle n'était pas utilisée
+    // et présentait un risque (DELETE FROM EPI_minibus sans WHERE)
 }
+
 
 // Si ce n'est pas une requête AJAX, afficher le formulaire HTML
 ?>
