@@ -598,15 +598,83 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             25% { transform: translateX(-5px); }
             75% { transform: translateX(5px); }
         }
+
+        /* Bouton flottant retour dashboard */
+        .back-link {
+            position: fixed;
+            top: 30px;
+            left: 30px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-decoration: none;
+            font-size: 24px;
+            font-weight: 600;
+            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.5);
+            transition: all 0.3s ease;
+            z-index: 1000;
+            border: none;
+            cursor: pointer;
+        }
+
+        .back-link:hover {
+            transform: translateY(-5px) scale(1.1);
+            box-shadow: 0 12px 35px rgba(102, 126, 234, 0.7);
+        }
+
+        .back-link:active {
+            transform: translateY(-2px) scale(1.05);
+        }
+
+        /* Tooltip au survol */
+        .back-link::before {
+            content: 'Retour au tableau de bord';
+            position: absolute;
+            left: 70px;
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 14px;
+            white-space: nowrap;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease;
+        }
+
+        .back-link:hover::before {
+            opacity: 1;
+        }
+
+        /* Responsive mobile */
+        @media (max-width: 768px) {
+            .back-link {
+                top: 20px;
+                left: 20px;
+                width: 55px;
+                height: 55px;
+                font-size: 22px;
+            }
+
+            .back-link::before {
+                left: 65px;
+                font-size: 12px;
+                padding: 6px 10px;
+            }
+        }
     </style>
 </head>
 <body>
+    <!-- Bouton flottant retour dashboard -->
+    <button onclick="window.location.href='dashboard.php'" class="back-link" title="Retour au tableau de bord">🏠</button>
+
     <div class="container">
         <h1>🚌 Calendrier Minibus 2026</h1>
-        
-        <div class="controls">
-            <button onclick="window.location.href='dashboard.php'" class="btn btn-primary">← Retour au dashboard</button>
-        </div>
         
         <div class="legend">
             <div class="legend-item">

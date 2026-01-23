@@ -2,7 +2,7 @@
 // Charger la configuration WordPress
 require_once('wp-config.php');
 require_once('auth.php');
-verifierRole('admin');
+verifierRole(['admin', 'gestionnaire']);
 
 // Connexion à la base de données
 $serveur = DB_HOST;
@@ -65,12 +65,12 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                 id_benevole, benevole, adresse_benevole, cp_benevole, commune_benevole, secteur_benevole, 
                 id_aide, aide, adresse_aide, cp_aide, commune_aide, secteur_aide, 
                 adresse_destination, cp_destination, commune_destination, 
-                nature_intervention, commentaires) 
+                nature_intervention, commentaires, email_createur, date_cre) 
                 VALUES (:date_mission, :heure_rdv, 
                 :id_benevole, :benevole, :adresse_benevole, :cp_benevole, :commune_benevole, :secteur_benevole, 
                 :id_aide, :aide, :adresse_aide, :cp_aide, :commune_aide, :secteur_aide, 
                 :adresse_destination, :cp_destination, :commune_destination, 
-                :nature_intervention, :commentaires)";
+                :nature_intervention, :commentaires, :email_createur, NOW())";
         
         $stmt = $conn->prepare($sql);
         
@@ -94,7 +94,8 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             ':cp_destination' => !empty($_POST['cp_destination']) ? $_POST['cp_destination'] : null,
             ':commune_destination' => !empty($_POST['commune_destination']) ? $_POST['commune_destination'] : null,
             ':nature_intervention' => !empty($_POST['nature_intervention']) ? $_POST['nature_intervention'] : null,
-            ':commentaires' => !empty($_POST['commentaires']) ? $_POST['commentaires'] : null
+            ':commentaires' => !empty($_POST['commentaires']) ? $_POST['commentaires'] : null,
+            ':email_createur' => isset($_SESSION['user']['email']) ? $_SESSION['user']['email'] : null
         ];
         
         // DEBUG: Afficher les données préparées
@@ -146,21 +147,53 @@ $dateJour = date('Y-m-d');
 
         .back-link {
             position: fixed;
-            top: 20px;
-            left: 20px;
-            background: white;
-            padding: 10px 20px;
-            border-radius: 8px;
+            top: 30px;
+            left: 30px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
             text-decoration: none;
-            color: #667eea;
+            font-size: 24px;
             font-weight: 600;
-            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
-            transition: transform 0.2s ease;
+            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.5);
+            transition: all 0.3s ease;
             z-index: 1000;
+            border: 3px solid #dc3545;
         }
 
         .back-link:hover {
-            transform: translateY(-2px);
+            transform: translateY(-5px) scale(1.1);
+            box-shadow: 0 12px 35px rgba(102, 126, 234, 0.7);
+            border-color: #c82333;
+        }
+
+        .back-link:active {
+            transform: translateY(-2px) scale(1.05);
+        }
+
+        /* Tooltip au survol */
+        .back-link::before {
+            content: 'Retour au tableau de bord';
+            position: absolute;
+            left: 70px;
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 14px;
+            white-space: nowrap;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease;
+        }
+
+        .back-link:hover::before {
+            opacity: 1;
         }
 
         .container {
@@ -322,11 +355,17 @@ $dateJour = date('Y-m-d');
             }
             
             .back-link {
-                position: static;
-                display: block;
-                text-align: center;
-                margin: 0 auto 20px;
-                max-width: 200px;
+                top: 20px;
+                left: 20px;
+                width: 55px;
+                height: 55px;
+                font-size: 22px;
+            }
+
+            .back-link::before {
+                left: 65px;
+                font-size: 12px;
+                padding: 6px 10px;
             }
             
             .container {
@@ -395,7 +434,7 @@ $dateJour = date('Y-m-d');
     </style>
 </head>
 <body>
-    <a href="dashboard.php" class="back-link">← Retour au dashboard</a>
+    <a href="dashboard.php" class="back-link" title="Retour au tableau de bord">🏠</a>
 
     <div class="container">
         <h1>🚗 Nouvelle Mission</h1>

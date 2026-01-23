@@ -78,7 +78,8 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['id_mission'])) {
 
 // Récupérer les paramètres de filtre
 $search = isset($_GET['search']) ? $_GET['search'] : '';
-$filterNoKm = isset($_GET['filter_no_km']) && $_GET['filter_no_km'] === '1';
+// Case cochée par défaut si le paramètre n'est pas présent
+$filterNoKm = !isset($_GET['filter_no_km']) || $_GET['filter_no_km'] === '1';
 
 // Récupérer les missions
 try {
@@ -89,7 +90,8 @@ try {
             nature_intervention, commentaires,
             km_saisi, km_calcule, heure_depart_mission, heure_retour_mission, duree
             FROM EPI_mission 
-            WHERE benevole IS NOT NULL";
+            WHERE benevole IS NOT NULL 
+            AND TRIM(benevole) != ''";
     
     $params = [];
     
@@ -135,20 +137,54 @@ try {
         }
 
         .back-link {
-            display: inline-block;
-            background: white;
-            padding: 10px 20px;
-            border-radius: 8px;
+            position: fixed;
+            top: 30px;
+            left: 30px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
             text-decoration: none;
-            color: #667eea;
+            font-size: 24px;
             font-weight: 600;
-            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
-            margin-bottom: 20px;
-            transition: transform 0.2s ease;
+            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.5);
+            transition: all 0.3s ease;
+            z-index: 1000;
+            border: 3px solid #dc3545;
         }
 
         .back-link:hover {
-            transform: translateY(-2px);
+            transform: translateY(-5px) scale(1.1);
+            box-shadow: 0 12px 35px rgba(102, 126, 234, 0.7);
+            border-color: #c82333;
+        }
+
+        .back-link:active {
+            transform: translateY(-2px) scale(1.05);
+        }
+
+        /* Tooltip au survol */
+        .back-link::before {
+            content: 'Retour au tableau de bord';
+            position: absolute;
+            left: 70px;
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 14px;
+            white-space: nowrap;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease;
+        }
+
+        .back-link:hover::before {
+            opacity: 1;
         }
 
         .container {
@@ -205,183 +241,178 @@ try {
         }
 
         .filter-box {
-            background: white;
+            background: #f8f9fa;
             padding: 20px;
-            border-radius: 12px;
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            border-radius: 10px;
             margin-bottom: 25px;
+            border: 2px solid #e9ecef;
         }
 
         .filter-row {
             display: flex;
             gap: 15px;
-            align-items: flex-end;
+            align-items: center;
             flex-wrap: wrap;
         }
 
         .filter-group {
             flex: 1;
-            min-width: 200px;
+            min-width: 250px;
         }
 
         .filter-group label {
             display: block;
             margin-bottom: 8px;
             font-weight: 600;
-            color: #333;
+            color: #495057;
             font-size: 14px;
         }
 
-        .filter-group input[type="text"] {
+        .filter-group input[type="text"],
+        .filter-group input[type="date"] {
             width: 100%;
-            padding: 10px 15px;
-            border: 2px solid #e0e0e0;
-            border-radius: 8px;
+            padding: 10px;
+            border: 2px solid #dee2e6;
+            border-radius: 6px;
             font-size: 14px;
             transition: all 0.3s ease;
         }
 
-        .filter-group input[type="text"]:focus {
+        .filter-group input:focus {
             outline: none;
             border-color: #667eea;
             box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
         }
 
-        .filter-checkbox {
+        .checkbox-group {
             display: flex;
             align-items: center;
-            gap: 10px;
+            gap: 8px;
             padding: 10px 0;
         }
 
-        .filter-checkbox input[type="checkbox"] {
+        .checkbox-group input[type="checkbox"] {
             width: 18px;
             height: 18px;
             cursor: pointer;
         }
 
-        .filter-checkbox label {
+        .checkbox-group label {
             cursor: pointer;
-            margin: 0;
+            user-select: none;
+            font-size: 14px;
             font-weight: 500;
         }
 
-        .filter-buttons {
-            display: flex;
-            gap: 10px;
-        }
-
         .btn-filter {
-            padding: 10px 20px;
-            background: #667eea;
+            padding: 10px 25px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
             border: none;
-            border-radius: 8px;
-            font-weight: 600;
+            border-radius: 6px;
             cursor: pointer;
-            transition: all 0.2s ease;
+            font-weight: 600;
+            font-size: 14px;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
         }
 
         .btn-filter:hover {
-            background: #5568d3;
-            transform: translateY(-1px);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6);
         }
 
-        .btn-reset {
-            padding: 10px 20px;
-            background: #6c757d;
-            color: white;
-            border: none;
-            border-radius: 8px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.2s ease;
-            text-decoration: none;
-            display: inline-block;
+        .btn-filter:active {
+            transform: translateY(0);
         }
 
-        .btn-reset:hover {
-            background: #5a6268;
-        }
-
-        .no-missions {
-            text-align: center;
-            padding: 40px;
-            color: #666;
-            font-size: 16px;
-        }
-
-        .missions-grid {
+        .mission-grid {
             display: grid;
             gap: 20px;
-            margin-top: 20px;
         }
 
         .mission-card {
-            background: #f8f9fa;
+            background: white;
+            border: 2px solid #e9ecef;
             border-radius: 12px;
-            padding: 20px;
-            border-left: 4px solid #667eea;
+            padding: 25px;
             transition: all 0.3s ease;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
         }
 
         .mission-card:hover {
-            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
             transform: translateY(-2px);
         }
 
         .mission-header {
             display: flex;
             justify-content: space-between;
-            align-items: start;
-            margin-bottom: 15px;
-            flex-wrap: wrap;
-            gap: 10px;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #f1f3f5;
         }
 
         .mission-date {
-            font-weight: 600;
-            color: #667eea;
             font-size: 16px;
+            font-weight: 700;
+            color: #667eea;
         }
 
-        .mission-benevole {
-            color: #764ba2;
-            font-weight: 600;
-            font-size: 14px;
+        .mission-id {
+            font-size: 12px;
+            color: #868e96;
+            background: #f8f9fa;
+            padding: 4px 10px;
+            border-radius: 4px;
         }
 
         .mission-details {
             display: grid;
-            gap: 10px;
-            margin-bottom: 15px;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-bottom: 25px;
         }
 
-        .detail-row {
-            display: flex;
-            align-items: start;
+        .detail-section {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            border-left: 4px solid #667eea;
+        }
+
+        .detail-section h4 {
+            color: #495057;
+            font-size: 13px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 10px;
+            font-weight: 700;
+        }
+
+        .detail-section p {
+            color: #212529;
             font-size: 14px;
+            line-height: 1.6;
+            margin: 5px 0;
         }
 
-        .detail-label {
+        .detail-section strong {
+            color: #495057;
             font-weight: 600;
-            color: #333;
-            min-width: 140px;
         }
 
-        .detail-value {
-            color: #666;
-        }
-
-        .km-section {
-            margin-top: 15px;
-            padding-top: 15px;
-            border-top: 1px solid #e0e0e0;
+        .form-section {
+            background: #f1f3f5;
+            padding: 20px;
+            border-radius: 10px;
+            margin-top: 20px;
         }
 
         .form-row {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
             gap: 15px;
             margin-bottom: 15px;
         }
@@ -392,18 +423,18 @@ try {
         }
 
         .form-group label {
-            font-size: 12px;
+            font-size: 13px;
             font-weight: 600;
-            color: #333;
-            margin-bottom: 5px;
+            color: #495057;
+            margin-bottom: 6px;
         }
 
         .form-group input {
-            width: 100%;
-            padding: 8px 12px;
-            border: 2px solid #e0e0e0;
-            border-radius: 8px;
+            padding: 10px;
+            border: 2px solid #dee2e6;
+            border-radius: 6px;
             font-size: 14px;
+            transition: all 0.3s ease;
         }
 
         .form-group input:focus {
@@ -413,25 +444,26 @@ try {
         }
 
         .form-group input[readonly] {
-            background-color: #f5f5f5;
+            background-color: #e9ecef;
+            cursor: not-allowed;
         }
 
         .btn-calculate {
-            padding: 8px 16px;
-            background: #28a745;
+            padding: 10px 20px;
+            background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
             color: white;
             border: none;
-            border-radius: 8px;
-            font-size: 13px;
-            font-weight: 600;
+            border-radius: 6px;
             cursor: pointer;
-            transition: all 0.2s ease;
-            align-self: end;
+            font-weight: 600;
+            font-size: 14px;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(40, 167, 69, 0.3);
         }
 
         .btn-calculate:hover:not(:disabled) {
-            background: #218838;
-            transform: translateY(-1px);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(40, 167, 69, 0.5);
         }
 
         .btn-calculate:disabled {
@@ -440,248 +472,280 @@ try {
         }
 
         .btn-save {
-            padding: 10px 24px;
+            padding: 12px 30px;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
             border: none;
-            border-radius: 8px;
-            font-size: 14px;
-            font-weight: 600;
+            border-radius: 6px;
             cursor: pointer;
-            transition: all 0.2s ease;
+            font-weight: 700;
+            font-size: 15px;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+            width: 100%;
             margin-top: 10px;
         }
 
-        .btn-save:hover:not(:disabled) {
+        .btn-save:hover {
             transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
-        }
-
-        .btn-save:disabled {
-            opacity: 0.6;
-            cursor: not-allowed;
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6);
         }
 
         .calc-message {
-            font-size: 12px;
-            margin-top: 5px;
-            padding: 5px;
-            border-radius: 4px;
+            padding: 12px;
+            border-radius: 6px;
+            margin: 10px 0;
+            font-size: 13px;
+            font-weight: 500;
+            animation: slideIn 0.3s ease;
+        }
+
+        .calc-message.loading {
+            background: #cfe2ff;
+            color: #084298;
+            border-left: 4px solid #0d6efd;
         }
 
         .calc-message.success {
-            background: #d4edda;
-            color: #155724;
+            background: #d1e7dd;
+            color: #0f5132;
+            border-left: 4px solid #198754;
         }
 
         .calc-message.error {
             background: #f8d7da;
-            color: #721c24;
+            color: #842029;
+            border-left: 4px solid #dc3545;
         }
 
-        .calc-message.loading {
-            background: #fff3cd;
-            color: #856404;
+        .no-results {
+            text-align: center;
+            padding: 60px 20px;
+            color: #868e96;
+            font-size: 16px;
         }
 
-        @media (max-width: 768px) {
-            .container {
-                padding: 20px;
-            }
-
-            .mission-header {
-                flex-direction: column;
-            }
-
-            .form-row {
-                grid-template-columns: 1fr;
-            }
+        .no-results::before {
+            content: "🔍";
+            display: block;
+            font-size: 48px;
+            margin-bottom: 15px;
         }
 
         @keyframes fadeOut {
             from { opacity: 1; }
             to { opacity: 0; }
         }
+
+        @media (max-width: 768px) {
+            .mission-details {
+                grid-template-columns: 1fr;
+            }
+            
+            .form-row {
+                grid-template-columns: 1fr;
+            }
+            
+            .filter-row {
+                flex-direction: column;
+            }
+            
+            .filter-group {
+                width: 100%;
+            }
+
+            /* Adapter le bouton flottant sur mobile */
+            .back-link {
+                top: 20px;
+                left: 20px;
+                width: 55px;
+                height: 55px;
+                font-size: 22px;
+            }
+
+            .back-link::before {
+                left: 65px;
+                font-size: 12px;
+                padding: 6px 10px;
+            }
+        }
     </style>
 </head>
 <body>
-    <a href="dashboard.php" class="back-link">← Retour au dashboard</a>
-
+    <a href="dashboard.php" class="back-link" title="Retour au tableau de bord">🏠</a>
+    
     <div class="container">
-        <h1>🚗 Saisie des Kilomètres et Heures</h1>
-        
+        <h1>📊 Saisie des Kilomètres et Heures de Mission</h1>
+
         <div class="info-banner">
-            ℹ️ Le calcul automatique des KM utilise OpenRouteService (gratuit). Saisissez les KM réels après vérification. <strong>Clé API requise (gratuite).</strong>
+            💡 <strong>Astuce :</strong> Les kilomètres sont calculés automatiquement en aller-retour : 
+            Bénévole → Aidé → Destination → Aidé → Bénévole (arrondi à l'entier supérieur)
         </div>
 
-        <!-- Formulaire de filtre -->
-        <div class="filter-box">
-            <form method="GET" action="">
-                <div class="filter-row">
-                    <div class="filter-group">
-                        <label for="search">🔍 Rechercher</label>
-                        <input type="text" 
-                               id="search" 
-                               name="search" 
-                               placeholder="Date, nom aidé ou bénévole..." 
-                               value="<?php echo htmlspecialchars($search); ?>">
-                    </div>
-                    
-                    <div class="filter-group">
-                        <div class="filter-checkbox">
-                            <input type="checkbox" 
-                                   id="filter_no_km" 
-                                   name="filter_no_km" 
-                                   value="1"
-                                   <?php echo $filterNoKm ? 'checked' : ''; ?>>
-                            <label for="filter_no_km">🚫 Uniquement missions sans km saisi</label>
-                        </div>
-                    </div>
-                    
-                    <div class="filter-buttons">
-                        <button type="submit" class="btn-filter">Filtrer</button>
-                        <a href="saisie_km.php" class="btn-reset">Réinitialiser</a>
-                    </div>
-                </div>
-            </form>
-        </div>
-
-        <?php if($message): ?>
+        <?php if ($message): ?>
             <div class="message <?php echo $messageType; ?>">
                 <?php echo $message; ?>
             </div>
         <?php endif; ?>
 
-        <?php if(empty($missions)): ?>
-            <div class="no-missions">
-                ✅ Aucune mission en attente de saisie KM. Toutes les missions sont complétées !
+        <!-- Filtres de recherche -->
+        <div class="filter-box">
+            <form method="GET" action="">
+                <div class="filter-row">
+                    <div class="filter-group">
+                        <label>🔎 Rechercher par date, aidé ou bénévole</label>
+                        <input type="text" 
+                               name="search" 
+                               placeholder="Ex: 2024-01-15, Dupont, Martin..." 
+                               value="<?php echo htmlspecialchars($search); ?>">
+                    </div>
+                    
+                    <div class="checkbox-group">
+                        <input type="checkbox" 
+                               id="filter_no_km" 
+                               name="filter_no_km" 
+                               value="1" 
+                               <?php echo $filterNoKm ? 'checked' : ''; ?>>
+                        <label for="filter_no_km">Afficher uniquement les missions sans KM saisi</label>
+                    </div>
+                    
+                    <button type="submit" class="btn-filter">🔍 Filtrer</button>
+                </div>
+            </form>
+        </div>
+
+        <?php if (empty($missions)): ?>
+            <div class="no-results">
+                <p>Aucune mission trouvée avec ces critères.</p>
             </div>
         <?php else: ?>
-            <div class="missions-grid">
-                <?php foreach($missions as $mission): ?>
+            <div class="mission-grid">
+                <?php foreach ($missions as $mission): ?>
                     <div class="mission-card">
+                        <div class="mission-header">
+                            <div class="mission-date">
+                                📅 <?php echo dateEnFrancais($mission['date_mission']); ?>
+                                <?php if ($mission['heure_rdv']): ?>
+                                    à <?php echo substr($mission['heure_rdv'], 0, 5); ?>
+                                <?php endif; ?>
+                            </div>
+                            <div class="mission-id">Mission #<?php echo $mission['id_mission']; ?></div>
+                        </div>
+
+                        <div class="mission-details">
+                            <div class="detail-section">
+                                <h4>👤 Bénévole</h4>
+                                <p><strong><?php echo htmlspecialchars($mission['benevole']); ?></strong></p>
+                                <p><?php echo htmlspecialchars($mission['adresse_benevole']); ?></p>
+                                <p><?php echo htmlspecialchars($mission['cp_benevole']); ?> <?php echo htmlspecialchars($mission['commune_benevole']); ?></p>
+                            </div>
+
+                            <div class="detail-section">
+                                <h4>🤝 Aidé</h4>
+                                <p><strong><?php echo htmlspecialchars($mission['aide']); ?></strong></p>
+                                <p><?php echo htmlspecialchars($mission['adresse_aide']); ?></p>
+                                <p><?php echo htmlspecialchars($mission['cp_aide']); ?> <?php echo htmlspecialchars($mission['commune_aide']); ?></p>
+                            </div>
+
+                            <div class="detail-section">
+                                <h4>📍 Destination</h4>
+                                <p><?php echo htmlspecialchars($mission['adresse_destination']); ?></p>
+                                <p><?php echo htmlspecialchars($mission['cp_destination']); ?> <?php echo htmlspecialchars($mission['commune_destination']); ?></p>
+                                <?php if ($mission['nature_intervention']): ?>
+                                    <p><strong>Type:</strong> <?php echo htmlspecialchars($mission['nature_intervention']); ?></p>
+                                <?php endif; ?>
+                            </div>
+
+                            <?php if ($mission['commentaires']): ?>
+                                <div class="detail-section" style="grid-column: 1 / -1;">
+                                    <h4>💬 Commentaires</h4>
+                                    <p><?php echo nl2br(htmlspecialchars($mission['commentaires'])); ?></p>
+                                </div>
+                            <?php endif; ?>
+                        </div>
+
                         <form method="POST" action="">
                             <input type="hidden" name="id_mission" value="<?php echo $mission['id_mission']; ?>">
                             
-                            <div class="mission-header">
-                                <div>
-                                    <span class="mission-date">
-                                        📅 <?php echo dateEnFrancais($mission['date_mission']); ?>
-                                        <?php if($mission['heure_rdv']): ?>
-                                            - <?php echo substr($mission['heure_rdv'], 0, 5); ?>
-                                        <?php endif; ?>
-                                    </span>
-                                </div>
-                                <div>
-                                    <span class="mission-benevole">
-                                        👤 <?php echo htmlspecialchars($mission['benevole'] ?: 'Non assigné'); ?>
-                                    </span>
-                                </div>
-                            </div>
-
-                            <div class="mission-details">
-                                <div class="detail-row">
-                                    <span class="detail-label">Aidé(e):</span>
-                                    <span class="detail-value"><?php echo htmlspecialchars($mission['aide']); ?></span>
-                                </div>
-                                <div class="detail-row">
-                                    <span class="detail-label">Adresse Aidé(e):</span>
-                                    <span class="detail-value">
-                                        <?php echo htmlspecialchars($mission['adresse_aide'] ?: '-'); ?>, 
-                                        <?php echo htmlspecialchars($mission['cp_aide']); ?> 
-                                        <?php echo htmlspecialchars($mission['commune_aide']); ?>
-                                    </span>
-                                </div>
-                                <?php if($mission['adresse_benevole']): ?>
-                                <div class="detail-row">
-                                    <span class="detail-label">Adresse Bénévole:</span>
-                                    <span class="detail-value">
-                                        <?php echo htmlspecialchars($mission['adresse_benevole']); ?>, 
-                                        <?php echo htmlspecialchars($mission['cp_benevole']); ?> 
-                                        <?php echo htmlspecialchars($mission['commune_benevole']); ?>
-                                    </span>
-                                </div>
-                                <?php endif; ?>
-                                <div class="detail-row">
-                                    <span class="detail-label">Destination:</span>
-                                    <span class="detail-value">
-                                        <?php echo htmlspecialchars($mission['adresse_destination'] ?: 'Non précisée'); ?>
-                                        <?php if($mission['commune_destination']): ?>
-                                            , <?php echo htmlspecialchars($mission['cp_destination']); ?> 
-                                            <?php echo htmlspecialchars($mission['commune_destination']); ?>
-                                        <?php endif; ?>
-                                    </span>
-                                </div>
-                                <?php if($mission['nature_intervention']): ?>
-                                <div class="detail-row">
-                                    <span class="detail-label">Nature:</span>
-                                    <span class="detail-value"><?php echo htmlspecialchars($mission['nature_intervention']); ?></span>
-                                </div>
-                                <?php endif; ?>
-                                <?php if($mission['commentaires']): ?>
-                                <div class="detail-row">
-                                    <span class="detail-label">Commentaires:</span>
-                                    <span class="detail-value"><?php echo htmlspecialchars($mission['commentaires']); ?></span>
-                                </div>
-                                <?php endif; ?>
-                            </div>
-
-                            <div class="km-section">
+                            <div class="form-section">
                                 <div class="form-row">
                                     <div class="form-group">
-                                        <label>KM calculés (auto)</label>
-                                        <input type="number" 
-                                               name="km_calcule" 
-                                               id="km_calcule_<?php echo $mission['id_mission']; ?>"
-                                               step="0.1" 
-                                               value="<?php echo htmlspecialchars($mission['km_calcule']); ?>"
-                                               readonly
-                                               placeholder="Calculer">
-                                    </div>
-                                    <div class="form-group">
-                                        <label>KM réels * (requis)</label>
-                                        <input type="number" 
-                                               name="km_saisi" 
-                                               step="0.1" 
-                                               value="<?php echo htmlspecialchars($mission['km_saisi']); ?>"
-                                               placeholder="Ex: 25.5"
-                                               required>
-                                    </div>
-                                    <div class="form-group">
-                                        <label>Heure départ</label>
+                                        <label>🕐 Heure Départ</label>
                                         <input type="time" 
-                                               name="heure_depart_mission"
                                                id="heure_depart_<?php echo $mission['id_mission']; ?>"
+                                               name="heure_depart_mission" 
                                                value="<?php echo $mission['heure_depart_mission'] ? substr($mission['heure_depart_mission'], 0, 5) : ''; ?>"
                                                onchange="calculateDuree(<?php echo $mission['id_mission']; ?>)">
                                     </div>
+
                                     <div class="form-group">
-                                        <label>Heure retour</label>
+                                        <label>🕐 Heure Retour</label>
                                         <input type="time" 
-                                               name="heure_retour_mission"
                                                id="heure_retour_<?php echo $mission['id_mission']; ?>"
+                                               name="heure_retour_mission" 
                                                value="<?php echo $mission['heure_retour_mission'] ? substr($mission['heure_retour_mission'], 0, 5) : ''; ?>"
                                                onchange="calculateDuree(<?php echo $mission['id_mission']; ?>)">
                                     </div>
+
                                     <div class="form-group">
-                                        <label>Durée calculée</label>
+                                        <label>⏱️ Durée (auto)</label>
                                         <input type="text" 
                                                id="duree_display_<?php echo $mission['id_mission']; ?>"
-                                               value="<?php echo $mission['duree'] ? substr($mission['duree'], 0, 5) : ''; ?>"
                                                readonly
-                                               placeholder="Auto"
-                                               style="background-color: #f5f5f5;">
+                                               value="<?php 
+                                                   if ($mission['duree']) {
+                                                       list($h, $m, $s) = explode(':', $mission['duree']);
+                                                       echo $h > 0 ? $h . 'h' . $m : $m . 'min';
+                                                   }
+                                               ?>">
                                         <input type="hidden" 
-                                               name="duree"
                                                id="duree_<?php echo $mission['id_mission']; ?>"
-                                               value="<?php echo htmlspecialchars($mission['duree']); ?>">
+                                               name="duree">
                                     </div>
-                                    <button type="button" 
-                                            class="btn-calculate" 
-                                            onclick="calculateDistanceGoogleMaps(<?php echo $mission['id_mission']; ?>, '<?php echo addslashes($mission['adresse_benevole']); ?>', '<?php echo addslashes($mission['cp_benevole']); ?>', '<?php echo addslashes($mission['commune_benevole']); ?>', '<?php echo addslashes($mission['adresse_aide']); ?>', '<?php echo addslashes($mission['cp_aide']); ?>', '<?php echo addslashes($mission['commune_aide']); ?>', '<?php echo addslashes($mission['adresse_destination']); ?>', '<?php echo addslashes($mission['cp_destination']); ?>', '<?php echo addslashes($mission['commune_destination']); ?>')">
-                                        🗺️ Calculer KM
-                                    </button>
                                 </div>
+
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label>🚗 KM Saisi (manuel)</label>
+                                        <input type="number" 
+                                               name="km_saisi" 
+                                               step="0.01"
+                                               placeholder="KM manuel"
+                                               value="<?php echo $mission['km_saisi']; ?>">
+                                    </div>
+
+                                    <div class="form-group">
+                                        <label>🗺️ KM Calculé (auto)</label>
+                                        <input type="number" 
+                                               id="km_calcule_<?php echo $mission['id_mission']; ?>"
+                                               name="km_calcule" 
+                                               step="0.01"
+                                               readonly
+                                               value="<?php echo $mission['km_calcule']; ?>">
+                                    </div>
+
+                                    <div class="form-group">
+                                        <label>&nbsp;</label>
+                                        <button type="button" 
+                                                class="btn-calculate"
+                                                onclick="calculateDistanceGoogleMaps(
+                                                    <?php echo $mission['id_mission']; ?>,
+                                                    '<?php echo addslashes($mission['aide']); ?>',
+                                                    '<?php echo addslashes($mission['adresse_benevole']); ?>',
+                                                    '<?php echo addslashes($mission['cp_benevole']); ?>',
+                                                    '<?php echo addslashes($mission['commune_benevole']); ?>',
+                                                    '<?php echo addslashes($mission['adresse_aide']); ?>',
+                                                    '<?php echo addslashes($mission['cp_aide']); ?>',
+                                                    '<?php echo addslashes($mission['commune_aide']); ?>',
+                                                    '<?php echo addslashes($mission['adresse_destination']); ?>',
+                                                    '<?php echo addslashes($mission['cp_destination']); ?>',
+                                                    '<?php echo addslashes($mission['commune_destination']); ?>'
+                                                )">
+                                            🗺️ Calculer KM
+                                        </button>
+                                    </div>
+                                </div>
+
                                 <div id="calc_msg_<?php echo $mission['id_mission']; ?>" class="calc-message" style="display:none;"></div>
                                 <button type="submit" class="btn-save">💾 Enregistrer</button>
                             </div>
@@ -693,10 +757,6 @@ try {
     </div>
 
     <script>
-        // ⚠️ IMPORTANT : Remplacez 'VOTRE_CLE_API_OPENROUTE' par votre clé API OpenRouteService
-        // Obtenez votre clé gratuite sur : https://openrouteservice.org/dev/#/signup
-        const OPENROUTE_API_KEY = 'eyJvcmciOiI1YjNjZTM1OTc4NTExMTAwMDFjZjYyNDgiLCJpZCI6IjUxNGUyYzdmMWUzMTRmM2E4ZTBmZTYwYWEzZTAzNjNmIiwiaCI6Im11cm11cjY0In0=';
-
         function showCalcMessage(id, text, type) {
             const msgDiv = document.getElementById('calc_msg_' + id);
             msgDiv.style.display = 'block';
@@ -704,7 +764,12 @@ try {
             msgDiv.textContent = text;
         }
 
-        async function calculateDistanceGoogleMaps(id, benevoleAddr, benevoleCp, benevoleVille, aideAddr, aideCp, aideVille, destAddr, destCp, destVille) {
+        // Fonction de pause (optionnelle, pour espacement entre requêtes si besoin)
+        function sleep(ms) {
+            return new Promise(resolve => setTimeout(resolve, ms));
+        }
+
+        async function calculateDistanceGoogleMaps(id, aideNom, benevoleAddr, benevoleCp, benevoleVille, aideAddr, aideCp, aideVille, destAddr, destCp, destVille) {
             const calcBtn = event.target;
             calcBtn.disabled = true;
             calcBtn.textContent = '⏳ Calcul...';
@@ -712,64 +777,95 @@ try {
             showCalcMessage(id, '🔍 Calcul de la distance...', 'loading');
 
             try {
-                if (!benevoleAddr || !aideAddr || !destAddr) {
+                // Validation des adresses
+                if (!benevoleAddr || !destAddr) {
                     throw new Error('Adresses incomplètes pour le calcul');
                 }
 
-                if (OPENROUTE_API_KEY === 'VOTRE_CLE_API_OPENROUTE') {
-                    throw new Error('⚠️ Veuillez configurer votre clé API OpenRouteService dans le code (ligne 698)');
+                // Vérifier si c'est une mission administrative (Z- Administratif)
+                const isAdministratif = aideNom && aideNom.trim().toUpperCase().startsWith('Z-');
+                
+                if (isAdministratif) {
+                    // CAS ADMINISTRATIF : Seulement Bénévole → Destination × 2
+                    showCalcMessage(id, '📋 Mission administrative détectée - Calcul simplifié...', 'loading');
+                    
+                    // Géocoder uniquement 2 adresses
+                    showCalcMessage(id, '📍 Localisation des adresses...', 'loading');
+                    const [coordsBenevole, coordsDest] = await Promise.all([
+                        geocodeAddress(`${benevoleAddr}, ${benevoleCp} ${benevoleVille}, France`),
+                        geocodeAddress(`${destAddr}, ${destCp} ${destVille}, France`)
+                    ]);
+                    
+                    // Calculer la distance directe
+                    showCalcMessage(id, '🚗 Calcul de la distance...', 'loading');
+                    const distBenevoleVersDest = await calculateRoute(coordsBenevole, coordsDest);
+                    
+                    // Distance totale = Distance × 2 (aller-retour), arrondi à l'entier supérieur
+                    const totalKm = Math.ceil(distBenevoleVersDest * 2);
+                    
+                    document.getElementById('km_calcule_' + id).value = totalKm;
+                    
+                    showCalcMessage(id, `✓ Distance calculée (mission administrative) : ${totalKm} km (${distBenevoleVersDest.toFixed(1)} km × 2, arrondi sup.)
+                        [${distBenevoleVersDest.toFixed(1)}km bénévole→destination direct]`, 'success');
+                        
+                } else {
+                    // CAS NORMAL : Bénévole → Aidé → Destination × 2
+                    if (!aideAddr) {
+                        throw new Error('Adresse aidé manquante pour le calcul');
+                    }
+                    
+                    // Étape 1 : Géocoder les 3 adresses EN PARALLÈLE
+                    showCalcMessage(id, '📍 Localisation des adresses...', 'loading');
+                    
+                    const [coordsBenevole, coordsAide, coordsDest] = await Promise.all([
+                        geocodeAddress(`${benevoleAddr}, ${benevoleCp} ${benevoleVille}, France`),
+                        geocodeAddress(`${aideAddr}, ${aideCp} ${aideVille}, France`),
+                        geocodeAddress(`${destAddr}, ${destCp} ${destVille}, France`)
+                    ]);
+
+                    // Étape 2 : Calculer les 2 distances EN PARALLÈLE
+                    showCalcMessage(id, '🚗 Calcul des distances...', 'loading');
+                    
+                    const [distBenevoleVersAide, distAideVersDest] = await Promise.all([
+                        calculateRoute(coordsBenevole, coordsAide),
+                        calculateRoute(coordsAide, coordsDest)
+                    ]);
+                    
+                    // Distance aller = Bénévole → Aidé + Aidé → Destination
+                    const distanceAller = distBenevoleVersAide + distAideVersDest;
+                    
+                    // Distance totale = Aller × 2 (aller-retour), arrondi à l'entier supérieur
+                    const totalKm = Math.ceil(distanceAller * 2);
+                    
+                    document.getElementById('km_calcule_' + id).value = totalKm;
+                    
+                    showCalcMessage(id, `✓ Distance calculée : ${totalKm} km (${distanceAller.toFixed(1)} km × 2, arrondi sup.)
+                        [${distBenevoleVersAide.toFixed(1)}km bénévole→aidé + ${distAideVersDest.toFixed(1)}km aidé→dest]`, 'success');
                 }
-
-                // Étape 1 : Géocoder les adresses (obtenir les coordonnées)
-                showCalcMessage(id, '📍 Localisation des adresses...', 'loading');
-                
-                const coordsBenevole = await geocodeAddress(`${benevoleAddr}, ${benevoleCp} ${benevoleVille}, France`);
-                const coordsAide = await geocodeAddress(`${aideAddr}, ${aideCp} ${aideVille}, France`);
-                const coordsDest = await geocodeAddress(`${destAddr}, ${destCp} ${destVille}, France`);
-
-                // Étape 2 : Calculer distance Bénévole → Aidé
-                showCalcMessage(id, '🚗 Calcul: Bénévole → Aidé...', 'loading');
-                const distBenevoleVersAide = await calculateRoute(coordsBenevole, coordsAide);
-                
-                // Étape 3 : Calculer distance Aidé → Destination
-                showCalcMessage(id, '🚗 Calcul: Aidé → Destination...', 'loading');
-                const distAideVersDest = await calculateRoute(coordsAide, coordsDest);
-                
-                // Distance aller = Bénévole → Aidé + Aidé → Destination
-                const distanceAller = distBenevoleVersAide + distAideVersDest;
-                
-                // Distance totale = Aller × 2 (aller-retour), arrondi à l'entier supérieur
-                const totalKm = Math.ceil(distanceAller * 2);
-                
-                document.getElementById('km_calcule_' + id).value = totalKm;
-                
-                showCalcMessage(id, `✓ Distance calculée : ${totalKm} km (${distanceAller.toFixed(1)} km × 2, arrondi sup.)
-                    [${distBenevoleVersAide.toFixed(1)}km bénévole→aidé + ${distAideVersDest.toFixed(1)}km aidé→dest]`, 'success');
 
             } catch (error) {
                 showCalcMessage(id, '❌ Erreur : ' + error.message, 'error');
-                console.error('Erreur:', error);
+                console.error('Erreur détaillée:', error);
             } finally {
                 calcBtn.disabled = false;
                 calcBtn.textContent = '🗺️ Calculer KM';
             }
         }
 
-        // Fonction pour géocoder une adresse (obtenir lat/lon)
+        // Fonction pour géocoder une adresse via proxy OpenRouteService
         async function geocodeAddress(address) {
-            const url = `https://api.openrouteservice.org/geocode/search?api_key=${OPENROUTE_API_KEY}&text=${encodeURIComponent(address)}&boundary.country=FR&size=1`;
-            
             try {
-                const response = await fetch(url);
+                console.log('🔍 Geocoding via proxy OpenRouteService:', address);
+                
+                const response = await fetch('openroute_proxy.php?action=geocode&address=' + encodeURIComponent(address));
                 
                 if (!response.ok) {
-                    if (response.status === 401) {
-                        throw new Error('Clé API OpenRouteService invalide ou manquante');
-                    }
-                    throw new Error(`Erreur HTTP ${response.status}`);
+                    const errorData = await response.json();
+                    throw new Error(errorData.message || `Erreur HTTP ${response.status}`);
                 }
                 
                 const data = await response.json();
+                console.log('✅ Résultat géocodage:', data);
                 
                 if (data.features && data.features.length > 0) {
                     const coords = data.features[0].geometry.coordinates;
@@ -781,47 +877,52 @@ try {
                     throw new Error(`Adresse non trouvée : ${address}`);
                 }
             } catch (error) {
+                console.error('❌ Erreur géocodage:', error);
                 throw new Error(`Géocodage impossible pour "${address}": ${error.message}`);
             }
         }
 
-        // Fonction pour calculer la distance routière entre deux points
+        // Fonction pour calculer la distance routière via proxy OpenRouteService
         async function calculateRoute(origin, destination) {
-            const url = `https://api.openrouteservice.org/v2/directions/driving-car?api_key=${OPENROUTE_API_KEY}`;
-            
-            const body = {
-                coordinates: [
-                    [origin.lon, origin.lat],
-                    [destination.lon, destination.lat]
-                ]
-            };
-            
             try {
-                const response = await fetch(url, {
+                console.log('🚗 Calcul d\'itinéraire via proxy OpenRouteService');
+                
+                const response = await fetch('openroute_proxy.php?action=route', {
                     method: 'POST',
                     headers: {
-                        'Content-Type': 'application/json',
-                        'Accept': 'application/json'
+                        'Content-Type': 'application/json'
                     },
-                    body: JSON.stringify(body)
+                    body: JSON.stringify({
+                        coordinates: [
+                            [origin.lon, origin.lat],
+                            [destination.lon, destination.lat]
+                        ]
+                    })
                 });
                 
                 if (!response.ok) {
-                    if (response.status === 401) {
-                        throw new Error('Clé API OpenRouteService invalide');
-                    }
-                    throw new Error(`Erreur HTTP ${response.status}`);
+                    const errorData = await response.json();
+                    throw new Error(errorData.message || `Erreur HTTP ${response.status}`);
                 }
                 
                 const data = await response.json();
-                
-                if (data.routes && data.routes.length > 0) {
-                    const distanceMeters = data.routes[0].summary.distance;
-                    return distanceMeters / 1000; // Convertir en km
-                } else {
-                    throw new Error('Itinéraire non trouvé');
-                }
+                console.log('✅ Résultat itinéraire:', data);
+                if (data.routes && data.routes.length > 0) {  // ✅ > 0 au lieu de >= 0
+    const distanceMeters = data.routes[0].summary.distance;
+    
+    // Gérer le cas distance nulle (adresses identiques ou très proches)
+    if (!distanceMeters || distanceMeters === 0) {
+        console.warn('⚠️ Distance nulle détectée (adresses identiques ou très proches)');
+        return 0;  // Retourner 0 au lieu d'une erreur
+    }
+    
+    return distanceMeters / 1000; // Convertir en km
+} else {
+    throw new Error('Itinéraire non trouvé');
+}
+
             } catch (error) {
+                console.error('❌ Erreur calcul itinéraire:', error);
                 throw new Error(`Calcul d'itinéraire impossible: ${error.message}`);
             }
         }

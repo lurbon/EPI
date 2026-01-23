@@ -33,7 +33,47 @@ require_once(__DIR__ . '/security-headers.php');
 
 // Constantes de configuration
 define('SESSION_TIMEOUT_ABSOLUTE', 10800);  // 3 heures (doit correspondre à login.php)
-define('SESSION_TIMEOUT_INACTIVITY', 1800); // 30 minutes
+define('SESSION_TIMEOUT_INACTIVITY', 3600); // 1 heure (60 minutes)
+
+/**
+ * Enregistre une déconnexion automatique dans la base de données
+ * 
+ * @param string $raison Raison de la déconnexion ('timeout_absolu' ou 'timeout_inactivite')
+ * @return void
+ */
+function enregistrerDeconnexionAuto($raison = 'timeout') {
+    // Vérifier que nous avons les informations nécessaires
+    if (!isset($_SESSION['connexion_log_id']) || !isset($_SESSION['login_time'])) {
+        return;
+    }
+    
+    try {
+        // Charger la configuration WordPress
+        require_once(__DIR__ . '/wp-config.php');
+        
+        $pdo = new PDO(
+            "mysql:host=" . DB_HOST . ";dbname=" . DB_NAME . ";charset=utf8mb4",
+            DB_USER,
+            DB_PASSWORD,
+            [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]
+        );
+        
+        $dureeSession = time() - $_SESSION['login_time'];
+        
+        $stmt = $pdo->prepare("
+            UPDATE connexions_log 
+            SET date_deconnexion = NOW(),
+                duree_session = ?,
+                message = CONCAT(message, ' [Déconnexion auto: ', ?, ']')
+            WHERE id = ?
+        ");
+        $stmt->execute([$dureeSession, $raison, $_SESSION['connexion_log_id']]);
+        
+    } catch (PDOException $e) {
+        // Continuer même si le logging échoue
+        error_log("Erreur logging déconnexion auto: " . $e->getMessage());
+    }
+}
 
 /**
  * Vérifie si l'utilisateur est authentifié et que sa session est valide
@@ -50,6 +90,8 @@ function verifierAuthentification() {
     // Vérifier l'expiration absolue (ne peut pas être renouvelée)
     // La session expire définitivement après SESSION_TIMEOUT_ABSOLUTE
     if (!isset($_SESSION['token_expires_absolute']) || $_SESSION['token_expires_absolute'] < time()) {
+        // Enregistrer la déconnexion automatique dans la base
+        enregistrerDeconnexionAuto('timeout_absolu');
         session_destroy();
         redirectionLogin("Session expirée après " . (SESSION_TIMEOUT_ABSOLUTE/3600) . " heures");
         return false;
@@ -58,6 +100,8 @@ function verifierAuthentification() {
     // Vérifier l'inactivité (peut être renouvelée)
     // La session expire si aucune activité pendant SESSION_TIMEOUT_INACTIVITY
     if (!isset($_SESSION['last_activity']) || (time() - $_SESSION['last_activity']) > SESSION_TIMEOUT_INACTIVITY) {
+        // Enregistrer la déconnexion automatique dans la base
+        enregistrerDeconnexionAuto('timeout_inactivite');
         session_destroy();
         redirectionLogin("Session expirée après " . (SESSION_TIMEOUT_INACTIVITY/60) . " minutes d'inactivité");
         return false;

@@ -76,20 +76,54 @@ try {
         }
 
         .back-link {
-            display: inline-block;
-            background: white;
-            padding: 10px 20px;
-            border-radius: 8px;
+            position: fixed;
+            top: 30px;
+            left: 30px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
             text-decoration: none;
-            color: #667eea;
+            font-size: 24px;
             font-weight: 600;
-            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
-            margin-bottom: 20px;
-            transition: transform 0.2s ease;
+            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.5);
+            transition: all 0.3s ease;
+            z-index: 1000;
+            border: 3px solid #dc3545;
         }
 
         .back-link:hover {
-            transform: translateY(-2px);
+            transform: translateY(-5px) scale(1.1);
+            box-shadow: 0 12px 35px rgba(102, 126, 234, 0.7);
+            border-color: #c82333;
+        }
+
+        .back-link:active {
+            transform: translateY(-2px) scale(1.05);
+        }
+
+        /* Tooltip au survol */
+        .back-link::before {
+            content: 'Retour au tableau de bord';
+            position: absolute;
+            left: 70px;
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 14px;
+            white-space: nowrap;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease;
+        }
+
+        .back-link:hover::before {
+            opacity: 1;
         }
 
         .container {
@@ -387,11 +421,54 @@ try {
             .detail-grid {
                 grid-template-columns: 1fr;
             }
+
+            /* Adapter le bouton flottant sur mobile */
+            .back-link {
+                top: 20px;
+                left: 20px;
+                width: 55px;
+                height: 55px;
+                font-size: 22px;
+            }
+
+            .back-link::before {
+                left: 65px;
+                font-size: 12px;
+                padding: 6px 10px;
+            }
+        }
+
+        /* Style pour les aidés inactifs */
+        .aide-inactif {
+            opacity: 0.5;
+            background-color: #f8f8f8 !important;
+        }
+
+        .aide-inactif td {
+            text-decoration: line-through;
+            color: #999 !important;
+        }
+
+        .aide-inactif strong {
+            color: #999 !important;
+        }
+
+        .aide-inactif a {
+            color: #999 !important;
+            pointer-events: none;
+        }
+
+        /* Style pour les aidés sans cotisation 2026 */
+        .nom-sans-cotisation {
+            background-color: #ffe6f0 !important;
+            padding: 4px 8px;
+            border-radius: 4px;
+            border: 2px solid #ff69b4 !important;
         }
     </style>
 </head>
 <body>
-    <a href="dashboard.php" class="back-link">← Retour au dashboard</a>
+    <a href="dashboard.php" class="back-link" title="Retour au tableau de bord">🏠</a>
 
     <div class="container">
         <h1>🤝 Liste des Aidés</h1>
@@ -412,8 +489,23 @@ try {
             <?php endif; ?>
         </form>
 
+        <?php 
+        // Compter uniquement les aidés actifs (sans date de fin)
+        $aidesActifs = array_filter($aides, function($a) {
+            return empty($a['date_fin']);
+        });
+        $nbActifs = count($aidesActifs);
+        $nbTotal = count($aides);
+        $nbInactifs = $nbTotal - $nbActifs;
+        ?>
+        
         <div class="stats">
-            <?php echo count($aides); ?> aidé<?php echo count($aides) > 1 ? 's' : ''; ?> trouvé<?php echo count($aides) > 1 ? 's' : ''; ?>
+            <?php echo $nbActifs; ?> aidé<?php echo $nbActifs > 1 ? 's' : ''; ?> actif<?php echo $nbActifs > 1 ? 's' : ''; ?>
+            <?php if($nbInactifs > 0): ?>
+                <span style="color: #999; font-size: 11px; margin-left: 10px;">
+                    (<?php echo $nbInactifs; ?> inactif<?php echo $nbInactifs > 1 ? 's' : ''; ?>)
+                </span>
+            <?php endif; ?>
         </div>
 
         <?php if(empty($aides)): ?>
@@ -437,8 +529,12 @@ try {
                     </thead>
                     <tbody>
                         <?php foreach($aides as $aide): ?>
-                            <tr onclick="showDetails(<?php echo htmlspecialchars(json_encode($aide), ENT_QUOTES, 'UTF-8'); ?>)">
-                                <td><strong><?php echo htmlspecialchars($aide['nom']); ?></strong></td>
+                            <tr class="<?php echo !empty($aide['date_fin']) ? 'aide-inactif' : ''; ?>" onclick="showDetails(<?php echo htmlspecialchars(json_encode($aide), ENT_QUOTES, 'UTF-8'); ?>)">
+                                <td>
+                                    <strong class="<?php echo (empty($aide['p_2026']) || $aide['p_2026'] == 0) ? 'nom-sans-cotisation' : ''; ?>">
+                                        <?php echo htmlspecialchars($aide['nom']); ?>
+                                    </strong>
+                                </td>
                                 <td>
                                     <?php if($aide['secteur']): ?>
                                         <span class="badge badge-secteur"><?php echo htmlspecialchars($aide['secteur']); ?></span>

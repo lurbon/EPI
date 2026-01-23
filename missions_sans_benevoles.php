@@ -116,7 +116,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['send_email'])) {
                         </div>
                         
                         <p style="margin: 10px 0;"><strong>📅 Date et heure :</strong> ' . formatDate($mission['date_mission']) . ' à ' . 
-                        (!empty($mission['heure_rdv']) ? $mission['heure_rdv'] : 'Heure non précisée') . '</p>
+                        (!empty($mission['heure_rdv']) ? substr($mission['heure_rdv'], 0, 5) : 'Heure non précisée') . '</p>
                         
                         <div style="background: #f8f9fa; padding: 12px; border-radius: 6px; margin: 10px 0;">
                             <p style="margin: 5px 0;"><strong>📍 Adresse départ :</strong><br>' . 
@@ -316,20 +316,54 @@ $totalMissions = array_sum(array_map('count', $missionsBySecteur));
         }
 
         .back-link {
-            display: inline-block;
-            background: white;
-            padding: 10px 20px;
-            border-radius: 8px;
+            position: fixed;
+            top: 30px;
+            left: 30px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
             text-decoration: none;
-            color: #667eea;
+            font-size: 24px;
             font-weight: 600;
-            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
-            margin-bottom: 20px;
-            transition: transform 0.2s ease;
+            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.5);
+            transition: all 0.3s ease;
+            z-index: 1000;
+            border: 3px solid #dc3545;
         }
 
         .back-link:hover {
-            transform: translateY(-2px);
+            transform: translateY(-5px) scale(1.1);
+            box-shadow: 0 12px 35px rgba(102, 126, 234, 0.7);
+            border-color: #c82333;
+        }
+
+        .back-link:active {
+            transform: translateY(-2px) scale(1.05);
+        }
+
+        /* Tooltip au survol */
+        .back-link::before {
+            content: 'Retour au tableau de bord';
+            position: absolute;
+            left: 70px;
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 14px;
+            white-space: nowrap;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease;
+        }
+
+        .back-link:hover::before {
+            opacity: 1;
         }
 
         .container {
@@ -600,7 +634,7 @@ $totalMissions = array_sum(array_map('count', $missionsBySecteur));
             background: white;
             padding: 30px;
             border-radius: 12px;
-            max-width: 700px;
+            max-width: 950px;
             width: 90%;
             max-height: 85vh;
             overflow-y: auto;
@@ -758,21 +792,23 @@ $totalMissions = array_sum(array_map('count', $missionsBySecteur));
         }
 
         .benevoles-list {
-            max-height: 300px;
+            max-height: 400px;
             overflow-y: auto;
             border: 2px solid #e0e0e0;
             border-radius: 8px;
-            padding: 15px;
+            padding: 10px;
             background: #f8f9fa;
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 6px;
         }
 
         .benevole-item {
             display: flex;
             align-items: center;
-            padding: 10px;
+            padding: 6px 8px;
             background: white;
             border-radius: 6px;
-            margin-bottom: 8px;
             transition: all 0.2s ease;
             cursor: pointer;
         }
@@ -783,32 +819,44 @@ $totalMissions = array_sum(array_map('count', $missionsBySecteur));
         }
 
         .benevole-item input[type="checkbox"] {
-            width: 20px;
-            height: 20px;
-            margin-right: 12px;
+            width: 18px;
+            height: 18px;
+            margin-right: 8px;
             cursor: pointer;
             accent-color: #667eea;
+            flex-shrink: 0;
         }
 
         .benevole-info {
             flex: 1;
+            min-width: 0;
         }
 
         .benevole-name {
             font-weight: 600;
             color: #333;
-            margin-bottom: 3px;
+            margin-bottom: 2px;
+            font-size: 13px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
 
         .benevole-email {
-            font-size: 12px;
+            font-size: 11px;
             color: #666;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
 
         .benevole-secteur {
-            font-size: 11px;
+            font-size: 10px;
             color: #999;
             font-style: italic;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
 
         .select-all-container {
@@ -854,6 +902,12 @@ $totalMissions = array_sum(array_map('count', $missionsBySecteur));
             color: #999;
         }
 
+        @media (max-width: 1024px) {
+            .benevoles-list {
+                grid-template-columns: 1fr 1fr;
+            }
+        }
+
         @media (max-width: 768px) {
             .missions-grid {
                 grid-template-columns: 1fr;
@@ -893,11 +947,30 @@ $totalMissions = array_sum(array_map('count', $missionsBySecteur));
             .recipient-options {
                 flex-direction: column;
             }
+
+            .benevoles-list {
+                grid-template-columns: 1fr;
+            }
+
+            /* Adapter le bouton flottant sur mobile */
+            .back-link {
+                top: 20px;
+                left: 20px;
+                width: 55px;
+                height: 55px;
+                font-size: 22px;
+            }
+
+            .back-link::before {
+                left: 65px;
+                font-size: 12px;
+                padding: 6px 10px;
+            }
         }
     </style>
 </head>
 <body>
-    <a href="dashboard.php" class="back-link">← Retour au dashboard</a>
+    <a href="dashboard.php" class="back-link" title="Retour au tableau de bord">🏠</a>
 
     <div class="container">
         <h1>📋 Missions sans Bénévoles Assignés</h1>
@@ -968,7 +1041,7 @@ $totalMissions = array_sum(array_map('count', $missionsBySecteur));
                                     👤 <?php echo htmlspecialchars($mission['aide_nom']); ?>
                                 </div>
                                 
-                                <p><strong>📅 Rendez-vous :</strong> <?php echo formatDate($mission['date_mission']); ?> à <?php echo !empty($mission['heure_rdv']) ? $mission['heure_rdv'] : 'Heure non précisée'; ?></p>
+                                <p><strong>📅 Rendez-vous :</strong> <?php echo formatDate($mission['date_mission']); ?> à <?php echo !empty($mission['heure_rdv']) ? substr($mission['heure_rdv'], 0, 5) : 'Heure non précisée'; ?></p>
                                 
                                 <div class="mission-info">
                                     <p><strong>📍 Adresse départ :</strong><br>

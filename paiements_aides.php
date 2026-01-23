@@ -125,20 +125,54 @@ try {
         }
 
         .back-link {
-            display: inline-block;
-            background: white;
-            padding: 10px 20px;
-            border-radius: 8px;
+            position: fixed;
+            top: 30px;
+            left: 30px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
             text-decoration: none;
-            color: #667eea;
+            font-size: 24px;
             font-weight: 600;
-            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
-            margin-bottom: 20px;
-            transition: transform 0.2s ease;
+            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.5);
+            transition: all 0.3s ease;
+            z-index: 1000;
+            border: 3px solid #dc3545;
         }
 
         .back-link:hover {
-            transform: translateY(-2px);
+            transform: translateY(-5px) scale(1.1);
+            box-shadow: 0 12px 35px rgba(102, 126, 234, 0.7);
+            border-color: #c82333;
+        }
+
+        .back-link:active {
+            transform: translateY(-2px) scale(1.05);
+        }
+
+        /* Tooltip au survol */
+        .back-link::before {
+            content: 'Retour au tableau de bord';
+            position: absolute;
+            left: 70px;
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 14px;
+            white-space: nowrap;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease;
+        }
+
+        .back-link:hover::before {
+            opacity: 1;
         }
 
         .container {
@@ -588,6 +622,21 @@ try {
             .table-wrapper {
                 font-size: 10px;
             }
+
+            /* Adapter le bouton flottant sur mobile */
+            .back-link {
+                top: 20px;
+                left: 20px;
+                width: 55px;
+                height: 55px;
+                font-size: 22px;
+            }
+
+            .back-link::before {
+                left: 65px;
+                font-size: 12px;
+                padding: 6px 10px;
+            }
         }
 
         @keyframes fadeOut {
@@ -606,7 +655,7 @@ try {
     </style>
 </head>
 <body>
-    <a href="dashboard.php" class="back-link">← Retour au dashboard</a>
+    <a href="dashboard.php" class="back-link" title="Retour au tableau de bord">🏠</a>
 
     <div class="container">
         <h1>💰 Cotisations aidés</h1>
