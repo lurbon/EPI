@@ -648,6 +648,7 @@ if (!$utilisateur || !$token) {
                         <div style="color: #667eea; font-size: 24px; font-weight: 800; margin-bottom: 10px;">Listes</div>
                         ${createMenuCard('👤', 'Liste des bénévoles', null, 'liste_benevoles.php')}
                         ${createMenuCard('🤝', 'Liste des aidés', null, 'liste_aides.php')}
+						${createMenuCard('🤝', 'Liste des missions', null, 'liste_missions.php')}
                     </div>
                 `;
 

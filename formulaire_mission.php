@@ -168,35 +168,26 @@ $dateJour = date('Y-m-d');
 
         .back-link:hover {
             transform: translateY(-5px) scale(1.1);
-            box-shadow: 0 12px 35px rgba(102, 126, 234, 0.7);
-            border-color: #c82333;
+            box-shadow: 0 12px 35px rgba(102, 126, 234, 0.6);
         }
 
         .back-link:active {
-            transform: translateY(-2px) scale(1.05);
+            transform: scale(0.95);
         }
 
-        /* Tooltip au survol */
-        .back-link::before {
-            content: 'Retour au tableau de bord';
-            position: absolute;
-            left: 70px;
-            background: rgba(0, 0, 0, 0.8);
-            color: white;
-            padding: 8px 12px;
-            border-radius: 6px;
-            font-size: 14px;
-            white-space: nowrap;
-            opacity: 0;
-            pointer-events: none;
-            transition: opacity 0.3s ease;
-        }
-
-        .back-link:hover::before {
-            opacity: 1;
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
         }
 
         .container {
+            animation: fadeInUp 0.6s ease-out;
             background: white;
             border-radius: 20px;
             box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
@@ -348,55 +339,49 @@ $dateJour = date('Y-m-d');
             word-break: break-word;
         }
 
-        /* RESPONSIVE */
+        #info_benevole strong, #info_aide strong {
+            color: #667eea;
+            font-size: clamp(12px, 3vw, 13px);
+        }
+
+        #affichage_adresse_benevole, #affichage_adresse_aide {
+            font-size: clamp(12px, 3vw, 13px);
+        }
+
         @media (max-width: 768px) {
-            body {
-                padding: 10px;
-            }
-            
             .back-link {
+                width: 50px;
+                height: 50px;
+                font-size: 20px;
                 top: 20px;
                 left: 20px;
-                width: 55px;
-                height: 55px;
-                font-size: 22px;
             }
 
-            .back-link::before {
-                left: 65px;
-                font-size: 12px;
-                padding: 6px 10px;
-            }
-            
             .container {
                 padding: 20px;
-                margin: 0 auto;
+                margin-top: 90px;
                 border-radius: 15px;
             }
-            
+
             .row {
                 grid-template-columns: 1fr;
-                gap: 0;
             }
         }
 
         @media (max-width: 480px) {
             body {
-                padding: 5px;
+                padding: 10px;
             }
 
             .container {
                 padding: 15px;
-                border-radius: 12px;
             }
 
             h1 {
                 font-size: 18px;
-                margin-bottom: 15px;
             }
 
             h3 {
-                font-size: 14px;
                 margin-top: 15px;
                 margin-bottom: 10px;
             }
@@ -498,24 +483,19 @@ $dateJour = date('Y-m-d');
             </div>
 
             <div class="form-group">
-                <label for="nature_intervention">Nature de l'intervention</label>
-                <select id="nature_intervention" name="nature_intervention">
-                    <option value="">-- Sélectionnez --</option>
-                    <?php foreach($interventions as $intervention): ?>
-                        <option value="<?php echo htmlspecialchars($intervention['Nature_intervention']); ?>">
-                            <?php echo htmlspecialchars($intervention['Nature_intervention']); ?>
+                <label for="nature_intervention">Type d'intervention *</label>
+                <select id="nature_intervention" name="nature_intervention" required>
+                    <option value="">-- Choisissez un type --</option>
+                    <?php foreach($interventions as $i): ?>
+                        <option value="<?php echo htmlspecialchars($i['Nature_intervention']); ?>">
+                            <?php echo htmlspecialchars($i['Nature_intervention']); ?>
                         </option>
                     <?php endforeach; ?>
                 </select>
             </div>
 
-            <div class="form-group">
-                <label for="commentaires">Commentaires</label>
-                <textarea id="commentaires" name="commentaires" placeholder="Notes complémentaires sur la mission..."></textarea>
-            </div>
-
             <!-- 3. DESTINATION -->
-            <h3>🎯 Destination</h3>
+            <h3>📍 Destination</h3>
             <div class="form-group">
                 <label for="adresse_destination">Adresse de destination</label>
                 <input type="text" id="adresse_destination" name="adresse_destination" 
@@ -572,6 +552,14 @@ $dateJour = date('Y-m-d');
                 <p id="affichage_adresse_benevole" style="margin-top: 5px; color: #666;"></p>
             </div>
 
+            <!-- 5. COMMENTAIRES -->
+            <h3>💬 Commentaires <span class="optional">(optionnel)</span></h3>
+            <div class="form-group">
+                <label for="commentaires">Informations complémentaires</label>
+                <textarea id="commentaires" name="commentaires" 
+                          placeholder="Ex: Personne à mobilité réduite, nécessite un fauteuil roulant..."></textarea>
+            </div>
+
             <button type="submit" class="btn-submit">💾 Enregistrer la mission</button>
         </form>
     </div>
@@ -580,40 +568,43 @@ $dateJour = date('Y-m-d');
         const benevolesData = <?php echo json_encode($benevoles); ?>;
         const aidesData = <?php echo json_encode($aides); ?>;
         const villesData = <?php echo json_encode($villes); ?>;
-
-        // Variables pour suivre le chargement des données
+        
         let benevoleDataLoading = false;
         let aideDataLoading = false;
 
         function remplirCPDestination() {
             const select = document.getElementById('commune_destination');
-            const selectedOption = select.options[select.selectedIndex];
-            const cp = selectedOption.getAttribute('data-cp');
-            
+            const option = select.options[select.selectedIndex];
+            const cp = option.dataset.cp;
             document.getElementById('cp_destination').value = cp || '';
         }
 
         async function chargerInfosBenevole(id) {
             if (!id) {
-                // Réinitialiser les champs si aucun bénévole n'est sélectionné
+                document.getElementById('info_benevole').style.display = 'none';
                 document.getElementById('benevole').value = '';
                 document.getElementById('adresse_benevole').value = '';
                 document.getElementById('cp_benevole').value = '';
                 document.getElementById('commune_benevole').value = '';
                 document.getElementById('secteur_benevole').value = '';
-                document.getElementById('info_benevole').style.display = 'none';
                 benevoleDataLoading = false;
                 return;
             }
 
             benevoleDataLoading = true;
 
+            // Récupérer les données depuis les attributs data- de l'option sélectionnée
+            const select = document.getElementById('id_benevole');
+            const option = select.options[select.selectedIndex];
+            const nom = option.dataset.nom || '';
+
             try {
                 const response = await fetch('get_benevole.php?id=' + id);
                 const data = await response.json();
                 
                 if (data.success) {
-                    document.getElementById('benevole').value = data.nom || '';
+                    // CORRECTION: Remplir tous les champs cachés avec les données du bénévole
+                    document.getElementById('benevole').value = data.nom || nom;
                     document.getElementById('adresse_benevole').value = data.adresse || '';
                     document.getElementById('cp_benevole').value = data.code_postal || '';
                     document.getElementById('commune_benevole').value = data.commune || '';
@@ -628,12 +619,22 @@ $dateJour = date('Y-m-d');
                     const select = document.getElementById('id_benevole');
                     const option = select.options[select.selectedIndex];
                     document.getElementById('benevole').value = option.dataset.nom;
+                    // En cas d'échec de l'API, on ne peut pas remplir les autres champs
+                    document.getElementById('adresse_benevole').value = '';
+                    document.getElementById('cp_benevole').value = '';
+                    document.getElementById('commune_benevole').value = '';
+                    document.getElementById('secteur_benevole').value = '';
                 }
             } catch (error) {
                 console.error('Erreur:', error);
                 const select = document.getElementById('id_benevole');
                 const option = select.options[select.selectedIndex];
                 document.getElementById('benevole').value = option.dataset.nom;
+                // En cas d'erreur, on ne peut pas remplir les autres champs
+                document.getElementById('adresse_benevole').value = '';
+                document.getElementById('cp_benevole').value = '';
+                document.getElementById('commune_benevole').value = '';
+                document.getElementById('secteur_benevole').value = '';
             } finally {
                 benevoleDataLoading = false;
             }
