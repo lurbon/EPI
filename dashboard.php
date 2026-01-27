@@ -24,67 +24,67 @@ if (!$utilisateur || !$token) {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             min-height: 100vh;
-            padding: 15px;
+            padding: 10px;
         }
 
         .page-wrapper {
             width: 100%;
-            max-width: 1400px;
+            max-width: 1000px;
             margin: 0 auto;
             display: grid;
             grid-template-columns: 1fr;
-            gap: 15px;
+            gap: 10px;
         }
 
         .section-separator {
-            height: 30px;
+            height: 15px;
         }
 
         /* Barre utilisateur */
         .user-bar {
             background: white;
-            padding: 8px 15px;
-            border-radius: 12px;
+            padding: 6px 12px;
+            border-radius: 10px;
             box-shadow: 0 2px 8px rgba(0,0,0,0.1);
             display: flex;
             justify-content: space-between;
             align-items: center;
             flex-wrap: wrap;
-            gap: 8px;
+            gap: 6px;
         }
 
         .user-info {
-            font-size: 13px;
+            font-size: 12px;
             color: #333;
             display: flex;
             align-items: center;
-            gap: 8px;
+            gap: 6px;
         }
 
         .user-name {
             font-weight: 700;
             color: #667eea;
-            font-size: 14px;
+            font-size: 13px;
         }
 
         .user-role {
-            padding: 3px 10px;
+            padding: 2px 8px;
             background: #e3f2fd;
-            border-radius: 10px;
-            font-size: 11px;
+            border-radius: 8px;
+            font-size: 10px;
             text-transform: uppercase;
             font-weight: 700;
             color: #1976d2;
         }
 
         .btn-logout {
-            padding: 6px 12px;
+            padding: 5px 10px;
             background: #f56565;
             color: white;
             border: none;
             border-radius: 6px;
             cursor: pointer;
-            font-size: 12px;
+            font-size: 11px;
             font-weight: 700;
             transition: all 0.3s ease;
         }
@@ -98,9 +98,9 @@ if (!$utilisateur || !$token) {
         /* Containers */
         .container {
             background: white;
-            border-radius: 20px;
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-            padding: 18px;
+            border-radius: 15px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+            padding: 12px;
             width: 100%;
         }
 
@@ -108,19 +108,19 @@ if (!$utilisateur || !$token) {
             display: flex;
             flex-direction: row;
             align-items: center;
-            gap: 12px;
-            margin-bottom: 18px;
+            gap: 8px;
+            margin-bottom: 10px;
         }
 
         .logo {
-            width: 55px;
-            height: 55px;
+            width: 40px;
+            height: 40px;
             object-fit: contain;
         }
 
         h1 {
             color: #667eea;
-            font-size: 26px;
+            font-size: 20px;
             margin-bottom: 0;
             font-weight: 800;
             letter-spacing: -0.5px;
@@ -129,24 +129,24 @@ if (!$utilisateur || !$token) {
         /* Menu cards */
         .menu-grid {
             display: grid;
-            grid-template-columns: 1fr;
-            gap: 12px;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 8px;
         }
 
         .menu-card {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            border-radius: 12px;
-            padding: 15px 12px;
+            border-radius: 10px;
+            padding: 10px 8px;
             text-decoration: none;
             color: white;
             transition: all 0.3s ease;
-            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+            box-shadow: 0 3px 10px rgba(102, 126, 234, 0.3);
             cursor: pointer;
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            min-height: 85px;
+            min-height: 65px;
             border: none;
             width: 100%;
             font-family: inherit;
@@ -158,23 +158,23 @@ if (!$utilisateur || !$token) {
         }
 
         .menu-card-icon {
-            font-size: 28px;
-            margin-bottom: 8px;
+            font-size: 22px;
+            margin-bottom: 4px;
         }
 
         .menu-card-title {
-            font-size: 19px;
+            font-size: 15px;
             font-weight: 700;
-            margin-bottom: 5px;
+            margin-bottom: 3px;
             text-align: center;
-            line-height: 1.3;
+            line-height: 1.1;
         }
 
         .menu-card-description {
-            font-size: 14px;
+            font-size: 12px;
             opacity: 0.95;
             text-align: center;
-            line-height: 1.3;
+            line-height: 1.1;
         }
 
         /* Sections spécifiques */
@@ -211,17 +211,17 @@ if (!$utilisateur || !$token) {
         /* Desktop */
         @media (min-width: 1025px) {
             .top-section {
-                grid-template-columns: 2fr 1fr;
-                gap: 15px;
+                grid-template-columns: 1fr 1fr;
+                gap: 10px;
             }
 
             .bottom-section {
                 grid-template-columns: 1fr 1fr;
-                gap: 15px;
+                gap: 10px;
             }
 
             .menu-grid.three-columns {
-                grid-template-columns: repeat(3, 1fr);
+                grid-template-columns: repeat(2, 1fr);
             }
 
             .menu-grid.two-columns {
@@ -495,10 +495,10 @@ if (!$utilisateur || !$token) {
                 document.getElementById('mainBlockTitle').textContent = 'Saisies et modifications';
                 document.getElementById('mainBlockGrid').innerHTML = `
                     ${createMenuCard('👤', 'Nouveau bénévole', null, 'formulaire_benevole.php')}
+                    ${createMenuCard('✏', 'Modifier un bénévole', null, 'modifier_benevole.php')}					
                     ${createMenuCard('🤝', 'Nouvel aidé', null, 'formulaire_aide.php')}
+                    ${createMenuCard('✏', 'Modifier un aidé', 'Inscription', 'modifier_aide.php')}					
                     ${createMenuCard('📋', 'Nouvelle mission', null,  'formulaire_mission.php')}
-                    ${createMenuCard('✏', 'Modifier un bénévole', null, 'modifier_benevole.php')}
-                    ${createMenuCard('✏', 'Modifier un aidé', 'Inscription', 'modifier_aide.php')}
                     ${createMenuCard('✏', 'Modifier une mission', 'Rapports','modifier_mission.php')}
                 `;
 
@@ -506,6 +506,7 @@ if (!$utilisateur || !$token) {
                 document.getElementById('secondaryBlockGrid').innerHTML = `
                     ${createMenuCard('❓', 'Mission sans bénévole', null,'missions_sans_benevoles.php')}
                     ${createMenuCard('🚗⌚', 'Saisie des KM et heures', null, 'saisie_km.php')}
+                    ${createMenuCard('🔄', 'Dupliquer une mission', null, 'dupliquer_mission.php')}
                 `;
 
                 document.getElementById('infoBlockTitle').textContent = 'Listes';
@@ -540,6 +541,7 @@ if (!$utilisateur || !$token) {
                 document.getElementById('secondaryBlockGrid').innerHTML = `
                     ${createMenuCard('❓', 'Mission sans bénévole', null,'missions_sans_benevoles.php')}
                     ${createMenuCard('🚗⌚', 'Saisie des KM et heures', null, 'saisie_km.php')}
+                    ${createMenuCard('🔄', 'Dupliquer une mission', null, 'dupliquer_mission.php')}
                 `;
 
                 document.getElementById('infoBlockTitle').textContent = 'Listes';

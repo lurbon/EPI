@@ -432,6 +432,13 @@ try {
                 padding: 6px 4px;
                 font-size: 11px;
             }
+            
+            /* Ensure name cells don't overflow */
+            td strong {
+                max-width: 100%;
+                word-wrap: break-word;
+                overflow-wrap: break-word;
+            }
 
             .filters {
                 flex-direction: column;
@@ -485,9 +492,22 @@ try {
         /* Style pour les bénévoles sans cotisation 2026 */
         .nom-sans-cotisation {
             background-color: #ffe6f0 !important;
-            padding: 4px 8px;
-            border-radius: 4px;
-            border: 2px solid #ff69b4 !important;
+            padding: 2px 4px;
+            border-radius: 3px;
+            border: 1px solid #ff69b4 !important;
+            display: inline-block;
+            max-width: 100%;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        
+        @media (max-width: 768px) {
+            .nom-sans-cotisation {
+                padding: 1px 3px;
+                border-width: 1px;
+                font-size: 10px;
+            }
         }
     </style>
 </head>
