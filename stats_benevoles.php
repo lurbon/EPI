@@ -169,6 +169,30 @@ function formaterDuree($duree) {
             box-shadow: 0 12px 35px rgba(102, 126, 234, 0.7);
         }
 
+        .back-link:active {
+            transform: translateY(-2px) scale(1.05);
+        }
+
+        /* Tooltip au survol */
+        .back-link::before {
+            content: 'Retour à l\'admin';
+            position: absolute;
+            left: 70px;
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 14px;
+            white-space: nowrap;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease;
+        }
+
+        .back-link:hover::before {
+            opacity: 1;
+        }
+
         .container {
             max-width: 1600px;
             margin: 0 auto;
@@ -400,6 +424,13 @@ function formaterDuree($duree) {
                 height: 50px;
                 font-size: 20px;
             }
+
+            .back-link::before {
+                left: 60px;
+                font-size: 12px;
+                padding: 6px 10px;
+            }
+
             h1 {
                 font-size: 1.5rem;
             }
@@ -414,7 +445,7 @@ function formaterDuree($duree) {
     </style>
 </head>
 <body>
-    <button onclick="window.location.href='dashboard.php'" class="back-link" title="Retour au tableau de bord">🏠</button>
+    <button onclick="window.location.href='admin.php'" class="back-link" title="Retour à l'admin">🏠</button>
 
     <div class="container">
         <div class="header-card">

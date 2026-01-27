@@ -70,7 +70,7 @@ try {
         $utilisateurs[] = [
             'slug' => $user_log['username'],
             'name' => $user_log['user_name'] ?: $user_log['username'],
-            'email' => $user_log['user_email'] ?: 'N/A',
+            'email' => $user_log['user_email'] ?: '',
             'roles' => $roles,
             'derniere_connexion' => $derniereConnexion,
             'nombre_connexions' => $countData['total'] ?? 0,
@@ -125,22 +125,53 @@ $utilisateursConnectes = $connectesData['connectes'] ?? 0;
 
         .back-link {
             position: fixed;
-            top: 20px;
-            left: 20px;
-            background: white;
-            color: #667eea;
-            padding: 10px 20px;
-            border-radius: 25px;
+            top: 30px;
+            left: 30px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
             text-decoration: none;
-            font-weight: bold;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            font-size: 24px;
+            font-weight: 600;
+            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.5);
             transition: all 0.3s ease;
             z-index: 1000;
+            border: none;
+            cursor: pointer;
         }
 
         .back-link:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 12px rgba(0,0,0,0.15);
+            transform: translateY(-5px) scale(1.1);
+            box-shadow: 0 12px 35px rgba(102, 126, 234, 0.7);
+        }
+
+        .back-link:active {
+            transform: translateY(-2px) scale(1.05);
+        }
+
+        /* Tooltip au survol */
+        .back-link::before {
+            content: 'Retour à l\'admin';
+            position: absolute;
+            left: 70px;
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 14px;
+            white-space: nowrap;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease;
+        }
+
+        .back-link:hover::before {
+            opacity: 1;
         }
 
         .container {
@@ -200,15 +231,15 @@ $utilisateursConnectes = $connectesData['connectes'] ?? 0;
         .user-card {
             background: white;
             border: 2px solid #e0e0e0;
-            border-radius: 15px;
-            padding: 20px;
+            border-radius: 10px;
+            padding: 12px;
             transition: all 0.3s ease;
             position: relative;
         }
 
         .user-card:hover {
-            box-shadow: 0 8px 20px rgba(0,0,0,0.1);
-            transform: translateY(-5px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            transform: translateY(-2px);
         }
 
         .user-card.connected {
@@ -218,11 +249,11 @@ $utilisateursConnectes = $connectesData['connectes'] ?? 0;
 
         .status-badge {
             position: absolute;
-            top: 15px;
-            right: 15px;
-            padding: 5px 12px;
-            border-radius: 20px;
-            font-size: 12px;
+            top: 8px;
+            right: 8px;
+            padding: 3px 8px;
+            border-radius: 12px;
+            font-size: 10px;
             font-weight: bold;
         }
 
@@ -239,21 +270,21 @@ $utilisateursConnectes = $connectesData['connectes'] ?? 0;
         .user-header {
             display: flex;
             align-items: center;
-            margin-bottom: 15px;
+            margin-bottom: 10px;
         }
 
         .user-avatar {
-            width: 60px;
-            height: 60px;
+            width: 45px;
+            height: 45px;
             border-radius: 50%;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             display: flex;
             align-items: center;
             justify-content: center;
             color: white;
-            font-size: 24px;
+            font-size: 18px;
             font-weight: bold;
-            margin-right: 15px;
+            margin-right: 10px;
             flex-shrink: 0;
         }
 
@@ -263,34 +294,35 @@ $utilisateursConnectes = $connectesData['connectes'] ?? 0;
         }
 
         .user-name {
-            font-size: 18px;
-            font-weight: bold;
+            font-size: 15px;
+            font-weight: 600;
             color: #333;
-            margin-bottom: 5px;
+            margin-bottom: 2px;
             overflow: hidden;
             text-overflow: ellipsis;
             white-space: nowrap;
         }
 
         .user-email {
-            font-size: 14px;
-            color: #666;
+            font-size: 12px;
+            color: #888;
             overflow: hidden;
             text-overflow: ellipsis;
             white-space: nowrap;
+            font-style: italic;
         }
 
         .user-details {
-            margin-top: 15px;
-            padding-top: 15px;
+            margin-top: 10px;
+            padding-top: 10px;
             border-top: 1px solid #e0e0e0;
         }
 
         .detail-row {
             display: flex;
             justify-content: space-between;
-            margin-bottom: 8px;
-            font-size: 14px;
+            margin-bottom: 5px;
+            font-size: 12px;
         }
 
         .detail-label {
@@ -300,15 +332,16 @@ $utilisateursConnectes = $connectesData['connectes'] ?? 0;
 
         .detail-value {
             color: #333;
-            font-weight: bold;
+            font-weight: 600;
+            font-size: 12px;
         }
 
         .role-badge {
             display: inline-block;
-            padding: 3px 10px;
-            border-radius: 12px;
-            font-size: 12px;
-            font-weight: bold;
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-size: 11px;
+            font-weight: 600;
         }
 
         .role-administrator {
@@ -329,15 +362,16 @@ $utilisateursConnectes = $connectesData['connectes'] ?? 0;
         .no-data {
             color: #999;
             font-style: italic;
+            font-size: 11px;
         }
 
         .last-activity {
-            font-size: 12px;
+            font-size: 11px;
             color: #666;
-            margin-top: 10px;
-            padding: 8px;
+            margin-top: 8px;
+            padding: 6px 8px;
             background: #f5f5f5;
-            border-radius: 8px;
+            border-radius: 6px;
         }
 
         .filter-section {
@@ -375,6 +409,20 @@ $utilisateursConnectes = $connectesData['connectes'] ?? 0;
         }
 
         @media (max-width: 768px) {
+            .back-link {
+                top: 20px;
+                left: 20px;
+                width: 55px;
+                height: 55px;
+                font-size: 22px;
+            }
+
+            .back-link::before {
+                left: 65px;
+                font-size: 12px;
+                padding: 6px 10px;
+            }
+
             .users-grid {
                 grid-template-columns: 1fr;
             }
@@ -390,7 +438,7 @@ $utilisateursConnectes = $connectesData['connectes'] ?? 0;
     </style>
 </head>
 <body>
-    <a href="dashboard.php" class="back-link">← Retour au Dashboard</a>
+    <button onclick="window.location.href='admin.php'" class="back-link" title="Retour à l'admin">🏠</button>
 
     <div class="container">
         <h1>👥 Profils Utilisateurs</h1>
@@ -460,8 +508,8 @@ $utilisateursConnectes = $connectesData['connectes'] ?? 0;
                             <div class="user-name" title="<?php echo htmlspecialchars($user['name'] ?? $user['slug']); ?>">
                                 <?php echo htmlspecialchars($user['name'] ?? $user['slug']); ?>
                             </div>
-                            <div class="user-email" title="<?php echo htmlspecialchars($user['email'] ?? 'N/A'); ?>">
-                                <?php echo htmlspecialchars($user['email'] ?? 'N/A'); ?>
+                            <div class="user-email" title="<?php echo htmlspecialchars($user['email'] ?: $user['slug']); ?>">
+                                <?php echo $user['email'] ? htmlspecialchars($user['email']) : '<span style="color: #aaa;">@' . htmlspecialchars($user['slug']) . '</span>'; ?>
                             </div>
                         </div>
                     </div>

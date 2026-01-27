@@ -1,7 +1,7 @@
 <?php
 require_once('wp-config.php');
 require_once('auth.php');
-verifierRole('admin');
+verifierRole(['admin', 'gestionnaire']);
 
 header('Content-Type: application/json');
 

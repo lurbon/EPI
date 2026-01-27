@@ -173,8 +173,8 @@ $_SESSION['login_time'] = time();
 try {
     $stmt = $pdo->prepare("
         INSERT INTO connexions_log 
-        (user_id, username, user_role, date_connexion, ip_address, user_agent, session_id, statut, message)
-        VALUES (?, ?, ?, NOW(), ?, ?, ?, 'success', 'Connexion réussie')
+        (user_id, username, user_role, date_connexion, last_activity_db, ip_address, user_agent, session_id, statut, message)
+        VALUES (?, ?, ?, NOW(), NOW(), ?, ?, ?, 'success', 'Connexion réussie')
     ");
     $stmt->execute([
         $userData['id'],

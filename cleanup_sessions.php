@@ -15,14 +15,25 @@
 // Charger la configuration WordPress
 require_once(__DIR__ . '/wp-config.php');
 
-// Protection : exécution en ligne de commande ou avec un token secret
-$secret_token = 'a7f3c9b2e8d1f6a4c5b8e7d3f2a9b1c4'; // À personnaliser !
-
+// Protection : CLI, token secret, ou admin connecté
 if (php_sapi_name() !== 'cli') {
-    // Exécution via navigateur : vérifier le token
-    if (!isset($_GET['token']) || $_GET['token'] !== $secret_token) {
-        http_response_code(403);
-        die('Accès refusé');
+    // Vérifier si admin connecté
+    require_once(__DIR__ . '/auth.php');
+    $isAdmin = false;
+    try {
+        verifierRole(['admin']);
+        $isAdmin = true;
+    } catch (Exception $e) {
+        $isAdmin = false;
+    }
+
+    // Si pas admin, vérifier le token
+    if (!$isAdmin) {
+        $secretToken = defined('CLEANUP_SECRET_TOKEN') ? CLEANUP_SECRET_TOKEN : '';
+        if (empty($secretToken) || !isset($_GET['token']) || $_GET['token'] !== $secretToken) {
+            http_response_code(403);
+            die('Accès refusé');
+        }
     }
 }
 

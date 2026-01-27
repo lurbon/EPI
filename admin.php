@@ -3,10 +3,6 @@
 require_once('wp-config.php');
 require_once('auth.php');
 verifierRole(['admin']);
-
-// Charger les secrets pour le token de cleanup
-require_once(__DIR__ . '/secrets.php');
-$cleanupToken = defined('CLEANUP_SECRET_TOKEN') ? CLEANUP_SECRET_TOKEN : '';
 ?>
 <!DOCTYPE html>
 <html lang="fr">
@@ -179,11 +175,20 @@ $cleanupToken = defined('CLEANUP_SECRET_TOKEN') ? CLEANUP_SECRET_TOKEN : '';
         <p class="subtitle">Outils réservés aux administrateurs</p>
 
         <div class="admin-menu">
-            <a href="statistiques_benevoles.php" class="admin-link">
+            <a href="stats_benevoles.php" class="admin-link">
                 <div class="icon">📊</div>
                 <div class="text">
                     <div class="title">Statistiques Bénévoles</div>
                     <div class="description">KM et durées par bénévole et par mois</div>
+                </div>
+                <div class="arrow">→</div>
+            </a>
+
+            <a href="stats_secteurs.php" class="admin-link">
+                <div class="icon">🗺️</div>
+                <div class="text">
+                    <div class="title">Statistiques Secteurs</div>
+                    <div class="description">Analyse par secteur géographique</div>
                 </div>
                 <div class="arrow">→</div>
             </a>
@@ -197,7 +202,7 @@ $cleanupToken = defined('CLEANUP_SECRET_TOKEN') ? CLEANUP_SECRET_TOKEN : '';
                 <div class="arrow">→</div>
             </a>
 
-            <a href="cleanup_sessions.php?token=<?php echo htmlspecialchars($cleanupToken, ENT_QUOTES, 'UTF-8'); ?>" class="admin-link">
+            <a href="cleanup_sessions.php" class="admin-link">
                 <div class="icon">🧹</div>
                 <div class="text">
                     <div class="title">Nettoyage Sessions</div>

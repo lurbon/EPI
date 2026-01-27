@@ -522,6 +522,7 @@ if (!$utilisateur || !$token) {
                      ${createMenuCard('🚌', 'Minibus',   null,'minibus.php')}
 					${createMenuCard('👤', 'Adhésion bénévole',  null,'paiements_benevoles.php')}
                    ${createMenuCard('👤', 'Adhésion aidé', null,'paiements_aides.php')}
+                   ${createMenuCard('⚙️', 'Administration', null,'admin.php')}
                 `;
             }
 
