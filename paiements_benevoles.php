@@ -40,11 +40,11 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['benevoles'])) {
             
             $stmt = $conn->prepare($sql);
             $stmt->execute([
-                ':p_2026' => !empty($data['p_2026']) ? $data['p_2026'] : null,
+                ':p_2026' => (isset($data['p_2026']) && $data['p_2026'] !== '') ? $data['p_2026'] : null,
                 ':moyen' => !empty($data['moyen']) ? $data['moyen'] : null,
                 ':date_1' => !empty($data['date_1']) ? $data['date_1'] : null,
                 ':observations_1' => !empty($data['observations_1']) ? $data['observations_1'] : null,
-                ':dons' => !empty($data['dons']) ? $data['dons'] : null,
+                ':dons' => (isset($data['dons']) && $data['dons'] !== '') ? $data['dons'] : null,
                 ':date_2' => !empty($data['date_2']) ? $data['date_2'] : null,
                 ':observations_2' => !empty($data['observations_2']) ? $data['observations_2'] : null,
                 ':id_benevole' => $id_benevole
@@ -686,13 +686,13 @@ try {
             </div>
             <div class="stat-item">
                 <div class="number" style="color: #28a745;">
-                    <?php echo count(array_filter($benevoles, function($b) { return !empty($b['p_2026']); })); ?>
+                    <?php echo count(array_filter($benevoles, function($b) { return !is_null($b['p_2026']) && $b['p_2026'] !== ''; })); ?>
                 </div>
                 <div class="label">Cotisations payées</div>
             </div>
             <div class="stat-item">
                 <div class="number" style="color: #dc3545;">
-                    <?php echo count(array_filter($benevoles, function($b) { return empty($b['p_2026']); })); ?>
+                    <?php echo count(array_filter($benevoles, function($b) { return is_null($b['p_2026']) || $b['p_2026'] === ''; })); ?>
                 </div>
                 <div class="label">Cotisations en attente</div>
             </div>
@@ -700,7 +700,7 @@ try {
                 <div class="number" style="color: #ffc107;">
                     <?php 
                     $somme_cotisations = array_sum(array_map(function($b) { 
-                        return !empty($b['p_2026']) ? floatval($b['p_2026']) : 0; 
+                        return (!is_null($b['p_2026']) && $b['p_2026'] !== '') ? floatval($b['p_2026']) : 0; 
                     }, $benevoles)); 
                     echo number_format($somme_cotisations, 0, ',', ' ') . ' €';
                     ?>
@@ -772,7 +772,7 @@ try {
                                            onchange="updateSelectionCount()">
                                 </td>
                                 <td>
-                                    <strong class="<?php echo empty($b['p_2026']) ? 'unpaid-name' : ''; ?>">
+                                    <strong class="<?php echo is_null($b['p_2026']) || $b['p_2026'] === '' ? 'unpaid-name' : ''; ?>">
                                         <?php echo htmlspecialchars($b['nom']); ?>
                                     </strong>
                                 </td>

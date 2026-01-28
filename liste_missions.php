@@ -34,25 +34,28 @@ $benevole_filter = isset($_GET['benevole']) ? $_GET['benevole'] : '';
 $secteur_filter = isset($_GET['secteur']) ? $_GET['secteur'] : '';
 
 try {
-    $sql = "SELECT * FROM EPI_mission WHERE 1=1";
+    $sql = "SELECT m.*, a.tel_fixe, a.tel_portable ,a.commentaires as comment
+            FROM EPI_mission m 
+            LEFT JOIN EPI_aide a ON m.id_aide = a.id_aide
+            WHERE 1=1";
     $params = [];
     
     if ($search) {
-        $sql .= " AND (benevole LIKE :search OR aide LIKE :search OR adresse_destination LIKE :search)";
+        $sql .= " AND (m.benevole LIKE :search OR m.aide LIKE :search OR m.adresse_destination LIKE :search)";
         $params[':search'] = "%$search%";
     }
     
     if ($benevole_filter) {
-        $sql .= " AND benevole LIKE :benevole";
+        $sql .= " AND m.benevole LIKE :benevole";
         $params[':benevole'] = "%$benevole_filter%";
     }
     
     if ($secteur_filter) {
-        $sql .= " AND secteur_aide LIKE :secteur";
+        $sql .= " AND m.secteur_aide LIKE :secteur";
         $params[':secteur'] = "%$secteur_filter%";
     }
     
-    $sql .= " ORDER BY date_mission ASC, heure_rdv ASC";
+    $sql .= " ORDER BY m.date_mission ASC, m.heure_rdv ASC";
     
     $stmt = $conn->prepare($sql);
     $stmt->execute($params);
@@ -720,13 +723,25 @@ foreach($missions as $m) {
     </div>
 
     <script>
+        // Fonction pour formater les numéros de téléphone
+        function formatTelephone(tel) {
+            if (!tel) return '-';
+            // Supprimer tous les espaces, points, tirets existants
+            tel = tel.replace(/[\s.-]/g, '');
+            // Formater par paires de chiffres
+            if (tel.length === 10) {
+                return tel.match(/.{1,2}/g).join(' ');
+            }
+            return tel; // Retourner tel quel si pas 10 chiffres
+        }
+
         // Fonction pour formater la date en français
         function formatDateFrancais(dateStr) {
             const jours = ['dimanche', 'lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi'];
             const mois = ['janvier', 'février', 'mars', 'avril', 'mai', 'juin', 
                          'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre'];
             
-            const date = new Date(dateStr + 'T00:00:00');
+            const date = new Date(dateStr + 'T00:00');
             const jour = jours[date.getDay()];
             const numJour = date.getDate();
             const nomMois = mois[date.getMonth()];
@@ -758,46 +773,34 @@ foreach($missions as $m) {
             
             const dateFormattee = formatDateFrancais(mission.date_mission);
             
-            modalTitre.textContent = '🚗 Mission du ' + dateFormattee;
+            modalTitre.textContent = '🚗 Mission du ' + dateFormattee +' à '+ (mission.heure_rdv ? mission.heure_rdv.substring(0, 5) : 'Non renseignée');
             
             let html = '';
-            
-            // Horaires
-            html += '<div class="detail-section"><h4>⏰ Horaires</h4><div class="detail-grid">';
-            html += '<div class="detail-item"><strong>Heure RDV</strong><span>' + (mission.heure_rdv || 'Non renseignée') + '</span></div>';
-            html += '<div class="detail-item"><strong>Heure départ</strong><span>' + (mission.heure_depart_mission || 'Non renseignée') + '</span></div>';
-            html += '<div class="detail-item"><strong>Heure retour</strong><span>' + (mission.heure_retour_mission || 'Non renseignée') + '</span></div>';
-            html += '<div class="detail-item"><strong>Durée totale</strong><span>' + (mission.duree || 'Non calculée') + '</span></div>';
-            html += '</div></div>';
-            
-            // Bénévole
-            html += '<div class="detail-section"><h4>👤 Bénévole</h4><div class="detail-grid">';
-            html += '<div class="detail-item"><strong>Nom</strong><span>' + (mission.benevole || '') + '</span></div>';
-            html += '<div class="detail-item"><strong>Secteur</strong><span>' + (mission.secteur_benevole || '-') + '</span></div>';
-            html += '<div class="detail-item"><strong>Adresse</strong><span>' + (mission.adresse_benevole || '-') + '</span></div>';
-            html += '<div class="detail-item"><strong>Ville</strong><span>' + (mission.commune_benevole ? mission.cp_benevole + ' ' + mission.commune_benevole : '-') + '</span></div>';
-            html += '</div></div>';
             
             // Aidé
             html += '<div class="detail-section"><h4>🤝 Aidé</h4><div class="detail-grid">';
             html += '<div class="detail-item"><strong>Nom</strong><span>' + (mission.aide || '-') + '</span></div>';
-            html += '<div class="detail-item"><strong>Secteur</strong><span>' + (mission.secteur_aide || '-') + '</span></div>';
+            html += '<div class="detail-item"><strong>Téléphone fixe</strong><span>' + formatTelephone(mission.tel_fixe) + '</span></div>';
+            html += '<div class="detail-item"><strong>Téléphone portable</strong><span>' + formatTelephone(mission.tel_portable) + '</span></div>';
             html += '<div class="detail-item"><strong>Adresse</strong><span>' + (mission.adresse_aide || '-') + '</span></div>';
             html += '<div class="detail-item"><strong>Ville</strong><span>' + (mission.commune_aide ? mission.cp_aide + ' ' + mission.commune_aide : '-') + '</span></div>';
-            html += '</div></div>';
-            
+	        html += '<div class="detail-item"><strong>Commentaires</strong><span>' + (mission.comment || '-') + '</span></div>';		
+            html += '</div></div>';      
             // Détails mission
             html += '<div class="detail-section"><h4>📋 Détails de la mission</h4><div class="detail-grid">';
             html += '<div class="detail-item"><strong>Adresse destination</strong><span>' + (mission.adresse_destination || 'Non renseignée') + '</span></div>';
             html += '<div class="detail-item"><strong>Ville destination</strong><span>' + (mission.commune_destination ? mission.cp_destination + ' ' + mission.commune_destination : 'Non renseignée') + '</span></div>';
             html += '<div class="detail-item"><strong>Nature intervention</strong><span>' + (mission.nature_intervention || 'Non renseignée') + '</span></div>';
-            html += '<div class="detail-item"><strong>Km saisis</strong><span>' + (mission.km_saisi || '-') + '</span></div>';
-            html += '<div class="detail-item"><strong>Km calculés</strong><span>' + (mission.km_calcule || '-') + '</span></div>';
             html += '</div>';
             if (mission.commentaires) {
                 html += '<div class="detail-item" style="margin-top: 15px;"><strong>Commentaires</strong><span>' + mission.commentaires + '</span></div>';
             }
             html += '</div>';
+			
+            // Bénévole
+            html += '<div class="detail-section"><h4>👤 Bénévole</h4><div class="detail-grid">';
+            html += '<div class="detail-item"><strong>Nom</strong><span>' + (mission.benevole || '') + '</span></div>';
+            html += '</div></div>';
             
             modalBody.innerHTML = html;
             modal.style.display = 'block';
