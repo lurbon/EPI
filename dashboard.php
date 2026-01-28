@@ -489,6 +489,9 @@ if (!$utilisateur || !$token) {
             const isGestionnaire = roles.includes('gestionnaire');
             const isBenevole = roles.includes('benevole');
             const isChauffeur = roles.includes('chauffeur');
+            
+            // Extraire le prénom de l'utilisateur (premier mot du nom)
+            const userFirstName = user.name ? user.name.split(' ')[0] : 'Utilisateur';
 
             // INTERFACE ADMINISTRATEUR (accès complet)
             if (isAdmin) {
@@ -514,6 +517,7 @@ if (!$utilisateur || !$token) {
                      ${createMenuCard('📝', 'Liste des missions',   null,'liste_missions.php')}
 					${createMenuCard('👤', 'Liste des aidés',  null,'liste_aides.php')}
                    ${createMenuCard('👤', 'Liste des bénévoles', null, 'liste_benevoles.php')}
+				    ${createMenuCard('👤', userFirstName + ' - Vos missions', null,'vos_missions.php')}
                    
                 `;
 
@@ -550,6 +554,7 @@ if (!$utilisateur || !$token) {
                      ${createMenuCard('📝', 'Liste des missions',   null,'liste_missions.php')}
 					${createMenuCard('👤', 'Liste des aidés',  null,'liste_aides.php')}
                    ${createMenuCard('👤', 'Liste des bénévoles', null, 'liste_benevoles.php')}
+				   ${createMenuCard('👤', userFirstName + ' - Vos missions', null,'vos_missions.php')}
                    
                 `;
 
@@ -579,11 +584,11 @@ if (!$utilisateur || !$token) {
                     </div>
                     <div style="display: grid; grid-template-columns: 1fr; gap: 12px;">
                         <div style="color: #667eea; font-size: 24px; font-weight: 800; margin-bottom: 10px;">Gestion des missions</div>
-                        ${createMenuCard('❓', 'Missions disponibles', null,'missions_sans_benevoles.php')}
+                        ${createMenuCard('👤', userFirstName + ' - Vos missions', null, 'vos_missions.php')}
                         ${createMenuCard('🚗⌚', 'Saisie KM et heures', null, 'saisie_km.php')}
                     </div>
                 `;
-                
+
                 // Restructurer le bloc secondaire (Annuaire)
                 document.getElementById('secondaryBlock').querySelector('.header-section').style.display = 'none';
                 
@@ -629,7 +634,7 @@ if (!$utilisateur || !$token) {
                     </div>
                     <div style="display: grid; grid-template-columns: 1fr; gap: 12px;">
                         <div style="color: #667eea; font-size: 24px; font-weight: 800; margin-bottom: 10px;">Gestion des missions</div>
-                        ${createMenuCard('❓', 'Missions sans bénévole', null,'missions_sans_benevoles.php')}
+                           ${createMenuCard('👤', userFirstName + ' - Vos missions', null, 'vos_missions.php')}
                         ${createMenuCard('🚗⌚', 'Saisie KM et heures', null, 'saisie_km.php')}
                     </div>
                 `;

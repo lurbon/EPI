@@ -21,6 +21,21 @@ try {
     die("Erreur de connexion : " . $e->getMessage());
 }
 
+// Déterminer si l'utilisateur est un bénévole (non admin)
+$isBenevole = hasRole('benevole') && !hasRole('admin') && !hasRole('gestionnaire');
+$idsBenevoleConnecte = [];
+
+if ($isBenevole) {
+    // Trouver les id_benevole correspondant à l'email de l'utilisateur connecté
+    // (un couple peut partager le même email → plusieurs id_benevole)
+    $userEmail = $_SESSION['user']['email'] ?? '';
+    if (!empty($userEmail)) {
+        $stmtBen = $conn->prepare("SELECT id_benevole FROM EPI_benevole WHERE courriel = :email");
+        $stmtBen->execute([':email' => $userEmail]);
+        $idsBenevoleConnecte = $stmtBen->fetchAll(PDO::FETCH_COLUMN);
+    }
+}
+
 // Fonction pour convertir la date en français
 function dateEnFrancais($date) {
     $jours = ['Dimanche', 'Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi'];
@@ -39,16 +54,28 @@ function dateEnFrancais($date) {
 // Traitement de la mise à jour
 if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['id_mission'])) {
     try {
-        $sql = "UPDATE EPI_mission SET 
+        // Sécurité : un bénévole ne peut modifier que ses propres missions
+        if ($isBenevole) {
+            $stmtCheck = $conn->prepare("SELECT id_benevole FROM EPI_mission WHERE id_mission = :id_mission");
+            $stmtCheck->execute([':id_mission' => $_POST['id_mission']]);
+            $missionCheck = $stmtCheck->fetch(PDO::FETCH_ASSOC);
+            if (!$missionCheck || !in_array($missionCheck['id_benevole'], $idsBenevoleConnecte)) {
+                $message = "Accès refusé : cette mission ne vous appartient pas.";
+                $messageType = "error";
+                goto skipUpdate;
+            }
+        }
+
+        $sql = "UPDATE EPI_mission SET
                 km_saisi = :km_saisi,
                 km_calcule = :km_calcule,
                 heure_depart_mission = :heure_depart_mission,
                 heure_retour_mission = :heure_retour_mission,
                 duree = :duree
                 WHERE id_mission = :id_mission";
-        
+
         $stmt = $conn->prepare($sql);
-        
+
         // Calcul de la durée si les heures sont fournies
         $duree = null;
         if (!empty($_POST['heure_depart_mission']) && !empty($_POST['heure_retour_mission'])) {
@@ -57,7 +84,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['id_mission'])) {
             $interval = $depart->diff($retour);
             $duree = $interval->format('%H:%I:00');
         }
-        
+
         $stmt->execute([
             ':km_saisi' => !empty($_POST['km_saisi']) ? $_POST['km_saisi'] : null,
             ':km_calcule' => !empty($_POST['km_calcule']) ? $_POST['km_calcule'] : null,
@@ -66,12 +93,13 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['id_mission'])) {
             ':duree' => $duree,
             ':id_mission' => $_POST['id_mission']
         ]);
-        
-        $message = "✅ Mission mise à jour avec succès !";
+
+        $message = "Mission mise à jour avec succès !";
         $messageType = "success";
-        
+
+        skipUpdate:
     } catch(PDOException $e) {
-        $message = "❌ Erreur : " . $e->getMessage();
+        $message = "Erreur : " . $e->getMessage();
         $messageType = "error";
     }
 }
@@ -94,12 +122,26 @@ try {
             AND TRIM(benevole) != ''";
     
     $params = [];
-    
+
+    // Filtre bénévole : ne voit que ses propres missions
+    // (un couple peut partager le même email → plusieurs id_benevole)
+    if ($isBenevole && !empty($idsBenevoleConnecte)) {
+        $placeholders = [];
+        foreach ($idsBenevoleConnecte as $i => $id) {
+            $placeholders[] = ":id_ben_$i";
+            $params[":id_ben_$i"] = $id;
+        }
+        $sql .= " AND id_benevole IN (" . implode(', ', $placeholders) . ")";
+    } elseif ($isBenevole && empty($idsBenevoleConnecte)) {
+        // Bénévole non trouvé en base → aucune mission à afficher
+        $sql .= " AND 1=0";
+    }
+
     // Filtre pour missions sans km saisi
     if ($filterNoKm) {
         $sql .= " AND (km_saisi IS NULL OR km_saisi = 0)";
     }
-    
+
     // Recherche par date, aidé ou bénévole
     if ($search) {
         $sql .= " AND (date_mission LIKE :search OR aide LIKE :search OR benevole LIKE :search)";
