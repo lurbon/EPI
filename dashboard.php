@@ -95,6 +95,26 @@ if (!$utilisateur || !$token) {
             box-shadow: 0 4px 12px rgba(245,101,101,0.4);
         }
 
+        .btn-change-password {
+            padding: 5px 10px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 11px;
+            font-weight: 700;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-block;
+        }
+
+        .btn-change-password:hover {
+            background: #764ba2;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+
         /* Containers */
         .container {
             background: white;
@@ -341,12 +361,15 @@ if (!$utilisateur || !$token) {
             <div class="user-info">
                 <span>👤 <span class="user-name" id="userName"></span></span>
                 <span class="user-role" id="userRole"></span>
-				
+			
 
             </div>
+			<div style="display: flex; gap: 10px; align-items: center;">
 						  <a href="img/photo.jpg" title="Voir le monstre">
 				<img src="img/cam.jpg" width="60" height="60" alt="" ></a>
-            <button class="btn-logout" id="logout">🚪 Déconnexion</button>
+				<a href="change_password.php" class="btn-change-password">🔑 Changer mot de passe</a>
+				<button class="btn-logout" id="logout">🚪 Déconnexion</button>
+			</div>
         </div>
 
         <!-- Loader initial -->
@@ -589,27 +612,8 @@ if (!$utilisateur || !$token) {
                     </div>
                 `;
 
-                // Restructurer le bloc secondaire (Annuaire)
-                document.getElementById('secondaryBlock').querySelector('.header-section').style.display = 'none';
-                
-                document.getElementById('secondaryBlockGrid').style.display = 'grid';
-                document.getElementById('secondaryBlockGrid').style.gridTemplateColumns = '200px 1fr';
-                document.getElementById('secondaryBlockGrid').style.gap = '20px';
-                document.getElementById('secondaryBlockGrid').style.alignItems = 'center';
-                document.getElementById('secondaryBlockGrid').style.flex = '1';
-                
-                document.getElementById('secondaryBlockGrid').innerHTML = `
-                    <div style="display: flex; justify-content: center; align-items: center;">
-                        <img src="img/Logo-Entraide-Plus-Iroise.jpg" alt="Logo" style="width: 180px; height: auto; object-fit: contain;">
-                    </div>
-                    <div style="display: grid; grid-template-columns: 1fr; gap: 12px;">
-                        <div style="color: #667eea; font-size: 24px; font-weight: 800; margin-bottom: 10px;">Listes</div>
-                        ${createMenuCard('👤', 'Bénévoles', null, 'liste_benevoles.php')}
-                        ${createMenuCard('🤝', 'Personnes Aidées', null, 'liste_aides.php')}
-                    </div>
-                `;
-
                 // Masquer les blocs non utilisés pour les bénévoles
+                document.getElementById('secondaryBlock').style.display = 'none';
                 document.getElementById('infoBlock').style.display = 'none';
                 document.getElementById('statsBlock').style.display = 'none';
             }
@@ -639,7 +643,7 @@ if (!$utilisateur || !$token) {
                     </div>
                 `;
                 
-                // Restructurer le bloc secondaire (Annuaire)
+                // Restructurer le bloc secondaire (Autres)
                 document.getElementById('secondaryBlock').querySelector('.header-section').style.display = 'none';
                 
                 document.getElementById('secondaryBlockGrid').style.display = 'grid';
@@ -653,33 +657,13 @@ if (!$utilisateur || !$token) {
                         <img src="img/Logo-Entraide-Plus-Iroise.jpg" alt="Logo" style="width: 180px; height: auto; object-fit: contain;">
                     </div>
                     <div style="display: grid; grid-template-columns: 1fr; gap: 12px;">
-                        <div style="color: #667eea; font-size: 24px; font-weight: 800; margin-bottom: 10px;">Listes</div>
-                        ${createMenuCard('👤', 'Liste des bénévoles', null, 'liste_benevoles.php')}
-                        ${createMenuCard('🤝', 'Liste des aidés', null, 'liste_aides.php')}
-						${createMenuCard('🤝', 'Liste des missions', null, 'liste_missions.php')}
-                    </div>
-                `;
-
-                // Ajouter le minibus dans le bloc info avec logo à gauche
-                document.getElementById('infoBlock').querySelector('.header-section').style.display = 'none';
-                
-                document.getElementById('infoBlockGrid').style.display = 'grid';
-                document.getElementById('infoBlockGrid').style.gridTemplateColumns = '200px 1fr';
-                document.getElementById('infoBlockGrid').style.gap = '20px';
-                document.getElementById('infoBlockGrid').style.alignItems = 'center';
-                document.getElementById('infoBlockGrid').style.flex = '1';
-                
-                document.getElementById('infoBlockGrid').innerHTML = `
-                    <div style="display: flex; justify-content: center; align-items: center;">
-                        <img src="img/Logo-Entraide-Plus-Iroise.jpg" alt="Logo" style="width: 180px; height: auto; object-fit: contain;">
-                    </div>
-                    <div style="display: grid; grid-template-columns: 1fr; gap: 12px;">
-                        <div style="color: #667eea; font-size: 24px; font-weight: 800; margin-bottom: 10px;">Autres actions</div>
+                        <div style="color: #667eea; font-size: 24px; font-weight: 800; margin-bottom: 10px;">Autres</div>
                         ${createMenuCard('🚌', 'Minibus', null, 'minibus.php')}
                     </div>
                 `;
 
-                // Masquer le bloc stats non utilisé pour les chauffeurs
+                // Masquer les blocs non utilisés pour les chauffeurs
+                document.getElementById('infoBlock').style.display = 'none';
                 document.getElementById('statsBlock').style.display = 'none';
             }
 

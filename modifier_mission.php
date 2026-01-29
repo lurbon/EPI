@@ -205,7 +205,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['id_mission']) && (!iss
         $sql = "UPDATE EPI_mission SET 
                 date_mission = :date_mission, heure_depart_mission = :heure_depart_mission,
                 heure_retour_mission = :heure_retour_mission, duree = :duree, km_saisi = :km_saisi,
-                km_calcule = :km_calcule, id_benevole = :id_benevole, benevole = :benevole,
+                id_benevole = :id_benevole, benevole = :benevole,
                 adresse_benevole = :adresse_benevole, cp_benevole = :cp_benevole,
                 commune_benevole = :commune_benevole, secteur_benevole = :secteur_benevole,
                 id_aide = :id_aide, aide = :aide, adresse_aide = :adresse_aide,
@@ -221,8 +221,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['id_mission']) && (!iss
             ':heure_depart_mission' => !empty($_POST['heure_depart_mission']) ? $_POST['heure_depart_mission'] : null,
             ':heure_retour_mission' => !empty($_POST['heure_retour_mission']) ? $_POST['heure_retour_mission'] : null,
             ':duree' => $duree,
-            ':km_saisi' => !empty($_POST['km_saisi']) ? $_POST['km_saisi'] : null,
-            ':km_calcule' => !empty($_POST['km_calcule']) ? $_POST['km_calcule'] : null,
+            ':km_saisi' => isset($_POST['km_saisi']) && $_POST['km_saisi'] !== '' ? $_POST['km_saisi'] : null,
             ':id_benevole' => $id_benevole,
             ':benevole' => $benevole,
             ':adresse_benevole' => $adresse_benevole,
@@ -942,7 +941,7 @@ if (isset($_GET['success'])) {
                 <div class="form-group">
                     <label for="km_calcule">Km calculés</label>
                     <input type="number" step="0.01" id="km_calcule" name="km_calcule"
-                           value="<?php echo $mission['km_calcule']; ?>">
+                           value="<?php echo $mission['km_calcule']; ?>" readonly style="background-color: #f0f0f0; cursor: not-allowed;">
                 </div>
             </div>
 

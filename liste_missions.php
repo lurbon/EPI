@@ -75,6 +75,9 @@ try {
 
 // Grouper les missions par mois
 $missionsByMonth = [];
+$currentMonthKey = date('Y-m'); // Mois courant au format Y-m
+$currentDate = date('Y-m-d'); // Date du jour au format Y-m-d
+
 foreach($missions as $mission) {
     $monthKey = date('Y-m', strtotime($mission['date_mission']));
     $monthLabel = getMoisFrancais($mission['date_mission']);
@@ -303,6 +306,17 @@ foreach($missions as $m) {
             border-bottom: 2px solid white;
         }
 
+        .tab.current-month {
+            background-color: #e8f5e9;
+        }
+
+        .tab.current-month.active {
+            background: #e8f5e9;
+            color: #28a745;
+            border-color: #28a745;
+            border-bottom: 2px solid #e8f5e9;
+        }
+
         .tab-badge {
             display: inline-block;
             background: #667eea;
@@ -332,7 +346,7 @@ foreach($missions as $m) {
         }
 
         .month-stats {
-            background: #e3f2fd;
+            background: #e8f5e9;
             padding: 10px;
             border-radius: 8px;
             margin-bottom: 15px;
@@ -396,6 +410,14 @@ foreach($missions as $m) {
         tbody tr:hover {
             background-color: #f8f9fa;
             cursor: pointer;
+        }
+
+        tbody tr.today {
+            background-color: #e8f5e9;
+        }
+
+        tbody tr.today:hover {
+            background-color: #c8e6c9;
         }
 
         .badge {
@@ -602,8 +624,9 @@ foreach($missions as $m) {
                     <?php 
                     $isFirst = true;
                     foreach($missionsByMonth as $monthKey => $monthData): 
+                        $isCurrentMonth = ($monthKey === $currentMonthKey);
                     ?>
-                        <div class="tab <?php echo $isFirst ? 'active' : ''; ?>" onclick="switchTab('<?php echo $monthKey; ?>')">
+                        <div class="tab <?php echo $isFirst ? 'active' : ''; ?> <?php echo $isCurrentMonth ? 'current-month' : ''; ?>" onclick="switchTab('<?php echo $monthKey; ?>')">
                             <?php echo $monthData['label']; ?>
                             <span class="tab-badge"><?php echo $monthData['count']; ?></span>
                         </div>
@@ -645,12 +668,15 @@ foreach($missions as $m) {
                                         <th>Destination</th>
                                         <th>Nature</th>
                                         <th>Commentaires</th>
-                                        <th>KM</th>
+                                        <th>KM Saisis</th>
+                                        <th>KM Calculés</th>
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    <?php foreach($monthData['missions'] as $mission): ?>
-                                        <tr onclick='showDetails(<?php echo json_encode($mission, JSON_HEX_APOS | JSON_HEX_QUOT); ?>)'>
+                                    <?php foreach($monthData['missions'] as $mission): 
+                                        $isToday = ($mission['date_mission'] === $currentDate);
+                                    ?>
+                                        <tr class="<?php echo $isToday ? 'today' : ''; ?>" onclick='showDetails(<?php echo json_encode($mission, JSON_HEX_APOS | JSON_HEX_QUOT); ?>)'>
                                             <td><strong><?php echo date('d/m/Y', strtotime($mission['date_mission'])); ?></strong></td>
                                             <td><?php echo $mission['heure_rdv'] ? substr($mission['heure_rdv'], 0, 5) : '-'; ?></td>
                                             <td><?php echo htmlspecialchars($mission['benevole'] ?: ''); ?></td>
@@ -693,6 +719,13 @@ foreach($missions as $m) {
                                             <td>
                                                 <?php if($mission['km_saisi'] && $mission['km_saisi'] > 0): ?>
                                                     <strong style="color: #667eea;"><?php echo htmlspecialchars($mission['km_saisi']); ?> km</strong>
+                                                <?php else: ?>
+                                                    <span style="color: #999;">-</span>
+                                                <?php endif; ?>
+                                            </td>
+                                            <td>
+                                                <?php if($mission['km_calcule'] && $mission['km_calcule'] > 0): ?>
+                                                    <span style="color: #28a745;"><?php echo htmlspecialchars($mission['km_calcule']); ?> km</span>
                                                 <?php else: ?>
                                                     <span style="color: #999;">-</span>
                                                 <?php endif; ?>

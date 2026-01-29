@@ -2,7 +2,7 @@
 // Charger la configuration WordPress
 require_once('wp-config.php');
 require_once('auth.php');
-verifierRole(['admin']);
+verifierRole(['admin','gestionnaire']);
 
 // Connexion à la base de données
 $serveur = DB_HOST;
@@ -86,7 +86,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['id_mission'])) {
         }
 
         $stmt->execute([
-            ':km_saisi' => !empty($_POST['km_saisi']) ? $_POST['km_saisi'] : null,
+            ':km_saisi' => isset($_POST['km_saisi']) && $_POST['km_saisi'] !== '' ? $_POST['km_saisi'] : null,
             ':km_calcule' => !empty($_POST['km_calcule']) ? $_POST['km_calcule'] : null,
             ':heure_depart_mission' => !empty($_POST['heure_depart_mission']) ? $_POST['heure_depart_mission'] : null,
             ':heure_retour_mission' => !empty($_POST['heure_retour_mission']) ? $_POST['heure_retour_mission'] : null,
