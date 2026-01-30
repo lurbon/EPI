@@ -179,156 +179,122 @@ foreach($missions as $m) {
         .container {
             background: white;
             border-radius: 20px;
+            padding: 40px;
+            max-width: 1600px;
+            margin: 100px auto 40px;
             box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-            padding: 30px;
-            max-width: 1800px;
-            margin: 0 auto;
         }
 
         h1 {
             color: #667eea;
-            margin-bottom: 25px;
+            font-size: 2.5em;
+            margin-bottom: 30px;
             text-align: center;
-            font-size: 28px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
         }
 
-        .filters {
+        .search-filters {
             display: flex;
             gap: 15px;
-            margin-bottom: 25px;
+            margin-bottom: 30px;
             flex-wrap: wrap;
         }
 
-        .filters input,
-        .filters select {
-            padding: 8px 12px;
+        .search-filters input,
+        .search-filters select,
+        .search-filters button {
+            padding: 12px 20px;
             border: 2px solid #e0e0e0;
-            border-radius: 8px;
-            font-size: 12px;
+            border-radius: 10px;
+            font-size: 16px;
             transition: all 0.3s ease;
         }
 
-        .filters input[type="text"] {
+        .search-filters input:focus,
+        .search-filters select:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .search-filters button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            cursor: pointer;
+            font-weight: 600;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .search-filters button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6);
+        }
+
+        .search-filters input[type="search"] {
             flex: 1;
             min-width: 250px;
         }
 
-        .filters select {
-            min-width: 150px;
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 40px;
         }
 
-        .filters input:focus,
-        .filters select:focus {
-            outline: none;
-            border-color: #667eea;
-        }
-
-        .filters button {
-            padding: 8px 16px;
+        .stat-card {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
-            border: none;
-            border-radius: 8px;
-            font-weight: 600;
-            font-size: 12px;
-            cursor: pointer;
-            transition: transform 0.2s ease;
-        }
-
-        .filters button:hover {
-            transform: translateY(-2px);
-        }
-
-        .stats {
-            background: #f8f9fa;
-            padding: 12px;
-            border-radius: 10px;
-            margin-bottom: 20px;
-            display: flex;
-            justify-content: space-around;
-            flex-wrap: wrap;
-            gap: 15px;
-        }
-
-        .stat-item {
+            padding: 30px;
+            border-radius: 15px;
             text-align: center;
+            box-shadow: 0 10px 30px rgba(102, 126, 234, 0.4);
         }
 
-        .stat-item .number {
-            font-size: 24px;
+        .stat-card h3 {
+            font-size: 1em;
+            margin-bottom: 10px;
+            opacity: 0.9;
+        }
+
+        .stat-card .stat-value {
+            font-size: 2.5em;
             font-weight: bold;
-            color: #667eea;
-        }
-
-        .stat-item .label {
-            font-size: 12px;
-            color: #666;
-        }
-
-        /* TABS */
-        .tabs-container {
-            margin-bottom: 20px;
         }
 
         .tabs {
             display: flex;
             gap: 10px;
-            border-bottom: 2px solid #e0e0e0;
-            overflow-x: auto;
-            padding-bottom: 10px;
             margin-bottom: 20px;
+            flex-wrap: wrap;
+            border-bottom: 2px solid #e0e0e0;
+            padding-bottom: 10px;
         }
 
         .tab {
-            padding: 10px 20px;
-            background: #f8f9fa;
-            border: 2px solid #e0e0e0;
-            border-bottom: none;
-            border-radius: 8px 8px 0 0;
+            padding: 12px 25px;
+            background: #f5f5f5;
+            border: none;
+            border-radius: 10px 10px 0 0;
             cursor: pointer;
+            font-size: 16px;
             font-weight: 600;
-            font-size: 12px;
-            color: #666;
             transition: all 0.3s ease;
-            white-space: nowrap;
-            position: relative;
-            bottom: -2px;
+            color: #666;
         }
 
         .tab:hover {
-            background: #e9ecef;
+            background: #e0e0e0;
         }
 
         .tab.active {
-            background: white;
-            color: #667eea;
-            border-color: #667eea;
-            border-bottom: 2px solid white;
-        }
-
-        .tab.current-month {
-            background-color: #e8f5e9;
-        }
-
-        .tab.current-month.active {
-            background: #e8f5e9;
-            color: #28a745;
-            border-color: #28a745;
-            border-bottom: 2px solid #e8f5e9;
-        }
-
-        .tab-badge {
-            display: inline-block;
-            background: #667eea;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
-            padding: 2px 7px;
-            border-radius: 10px;
-            font-size: 10px;
-            margin-left: 8px;
-        }
-
-        .tab.active .tab-badge {
-            background: #764ba2;
+            box-shadow: 0 -4px 15px rgba(102, 126, 234, 0.4);
         }
 
         .tab-content {
@@ -337,44 +303,43 @@ foreach($missions as $m) {
 
         .tab-content.active {
             display: block;
-            animation: fadeIn 0.3s ease;
         }
 
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(10px); }
-            to { opacity: 1; transform: translateY(0); }
+        .month-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding: 20px;
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            border-radius: 15px;
         }
 
         .month-stats {
-            background: #e8f5e9;
-            padding: 10px;
-            border-radius: 8px;
-            margin-bottom: 15px;
             display: flex;
-            justify-content: space-around;
-            flex-wrap: wrap;
-            gap: 15px;
+            gap: 30px;
         }
 
-        .month-stat-item {
+        .month-stat {
             text-align: center;
         }
 
-        .month-stat-item .number {
-            font-size: 18px;
+        .month-stat-label {
+            font-size: 0.9em;
+            color: #666;
+            margin-bottom: 5px;
+        }
+
+        .month-stat-value {
+            font-size: 1.8em;
             font-weight: bold;
-            color: #1976d2;
+            color: #667eea;
         }
 
-        .month-stat-item .label {
-            font-size: 11px;
-            color: #555;
-        }
-
-        .table-wrapper {
+        .missions-table {
             overflow-x: auto;
-            border-radius: 10px;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            border-radius: 15px;
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.1);
         }
 
         table {
@@ -383,66 +348,51 @@ foreach($missions as $m) {
             background: white;
         }
 
-        thead {
+        th {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
-        }
-
-        th {
-            padding: 12px 8px;
+            padding: 15px;
             text-align: left;
             font-weight: 600;
-            font-size: 11px;
-            text-transform: uppercase;
-            white-space: nowrap;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+
+        th:first-child {
+            border-radius: 15px 0 0 0;
+        }
+
+        th:last-child {
+            border-radius: 0 15px 0 0;
         }
 
         td {
-            padding: 10px 8px;
-            border-bottom: 1px solid #e0e0e0;
-            font-size: 11px;
+            padding: 15px;
+            border-bottom: 1px solid #f0f0f0;
         }
 
-        tbody tr {
-            transition: background-color 0.2s ease;
-        }
-
-        tbody tr:hover {
-            background-color: #f8f9fa;
+        tr:hover {
+            background: #f8f9fa;
             cursor: pointer;
-        }
-
-        tbody tr.today {
-            background-color: #e8f5e9;
-        }
-
-        tbody tr.today:hover {
-            background-color: #c8e6c9;
         }
 
         .badge {
             display: inline-block;
-            padding: 3px 7px;
-            border-radius: 12px;
-            font-size: 10px;
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 0.85em;
             font-weight: 600;
         }
 
-        .badge-nature {
-            background: #fff3cd;
-            color: #856404;
-        }
-
         .badge-secteur {
-            background: #d1ecf1;
-            color: #0c5460;
+            background: #e3f2fd;
+            color: #1976d2;
         }
 
-        .no-results {
-            text-align: center;
-            padding: 40px;
-            color: #666;
-            font-size: 14px;
+        .badge-nature {
+            background: #fff3e0;
+            color: #f57c00;
         }
 
         .modal {
@@ -453,209 +403,227 @@ foreach($missions as $m) {
             top: 0;
             width: 100%;
             height: 100%;
-            overflow: auto;
-            background-color: rgba(0,0,0,0.5);
-            animation: fadeInModal 0.3s ease;
-        }
-
-        @keyframes fadeInModal {
-            from { opacity: 0; }
-            to { opacity: 1; }
+            background: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(5px);
         }
 
         .modal-content {
-            background-color: white;
-            margin: 2% auto;
-            padding: 30px;
-            border-radius: 15px;
-            width: 90%;
-            max-width: 900px;
-            max-height: 90vh;
-            overflow-y: auto;
-            animation: slideIn 0.3s ease;
+            background: white;
+            margin: 5% auto;
+            padding: 0;
+            border-radius: 20px;
+            max-width: 800px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
+            animation: modalSlideIn 0.3s ease;
         }
 
-        @keyframes slideIn {
-            from { transform: translateY(-50px); opacity: 0; }
-            to { transform: translateY(0); opacity: 1; }
-        }
-
-        .close {
-            color: #aaa;
-            float: right;
-            font-size: 28px;
-            font-weight: bold;
-            cursor: pointer;
-            line-height: 20px;
-        }
-
-        .close:hover {
-            color: #667eea;
+        @keyframes modalSlideIn {
+            from {
+                transform: translateY(-50px);
+                opacity: 0;
+            }
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
         }
 
         .modal-header {
-            border-bottom: 2px solid #e0e0e0;
-            padding-bottom: 15px;
-            margin-bottom: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            border-radius: 20px 20px 0 0;
         }
 
         .modal-header h2 {
-            color: #667eea;
-            font-size: 20px;
+            margin: 0;
+            font-size: 1.8em;
+        }
+
+        .close {
+            color: white;
+            float: right;
+            font-size: 35px;
+            font-weight: bold;
+            cursor: pointer;
+            line-height: 1;
+            transition: all 0.3s ease;
+        }
+
+        .close:hover {
+            transform: scale(1.2);
+        }
+
+        #modalBody {
+            padding: 30px;
         }
 
         .detail-section {
-            margin-bottom: 20px;
+            margin-bottom: 30px;
         }
 
         .detail-section h4 {
             color: #667eea;
-            margin-bottom: 10px;
-            font-size: 14px;
-            border-bottom: 1px solid #e0e0e0;
-            padding-bottom: 5px;
+            font-size: 1.3em;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #f0f0f0;
         }
 
         .detail-grid {
             display: grid;
-            grid-template-columns: repeat(2, 1fr);
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
             gap: 15px;
         }
 
         .detail-item {
-            font-size: 12px;
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 10px;
+            border-left: 4px solid #667eea;
         }
 
         .detail-item strong {
             display: block;
             color: #666;
-            font-size: 11px;
-            margin-bottom: 3px;
+            font-size: 0.9em;
+            margin-bottom: 5px;
+        }
+
+        .detail-item span {
+            display: block;
+            color: #333;
+            font-size: 1.1em;
+        }
+
+        .no-missions {
+            text-align: center;
+            padding: 60px 20px;
+            color: #999;
+        }
+
+        .no-missions svg {
+            width: 100px;
+            height: 100px;
+            margin-bottom: 20px;
+            opacity: 0.3;
         }
 
         @media (max-width: 768px) {
-            .filters {
+            .container {
+                padding: 20px;
+                margin: 80px 10px 20px;
+            }
+
+            .search-filters {
                 flex-direction: column;
             }
-            
-            .filters input[type="text"],
-            .filters select {
+
+            .search-filters input,
+            .search-filters select {
                 width: 100%;
             }
 
-            .tabs {
-                gap: 5px;
-            }
-
-            .tab {
-                padding: 8px 14px;
-                font-size: 11px;
-            }
-
-            th, td {
-                font-size: 10px;
-                padding: 6px 4px;
-            }
-
-            .detail-grid {
+            .stats-grid {
                 grid-template-columns: 1fr;
             }
 
-            /* Adapter le bouton flottant sur mobile */
-            .back-link {
-                top: 20px;
-                left: 20px;
-                width: 55px;
-                height: 55px;
-                font-size: 22px;
+            .tabs {
+                overflow-x: auto;
+                flex-wrap: nowrap;
             }
 
-            .back-link::before {
-                left: 65px;
-                font-size: 12px;
-                padding: 6px 10px;
+            table {
+                font-size: 0.9em;
+            }
+
+            th, td {
+                padding: 10px;
             }
         }
     </style>
 </head>
 <body>
-    <a href="dashboard.php" class="back-link" title="Retour au tableau de bord">🏠</a>
+    <a href="index.php" class="back-link">←</a>
 
     <div class="container">
-        <h1>🚗 Liste des Missions</h1>
+        <h1>📋 Liste des Missions</h1>
 
-        <form method="GET" class="filters">
-            <input type="text" name="search" placeholder="🔍 Rechercher bénévole, aidé, destination..." value="<?php echo htmlspecialchars($search); ?>">
-            
+        <form method="GET" class="search-filters">
+            <input type="search" name="search" placeholder="🔍 Rechercher par bénévole, aidé ou destination..." value="<?php echo htmlspecialchars($search); ?>">
             <select name="secteur">
-                <option value="">Tous les secteurs</option>
+                <option value="">📍 Tous les secteurs</option>
                 <?php foreach($secteurs as $secteur): ?>
                     <option value="<?php echo htmlspecialchars($secteur); ?>" <?php echo $secteur_filter === $secteur ? 'selected' : ''; ?>>
                         <?php echo htmlspecialchars($secteur); ?>
                     </option>
                 <?php endforeach; ?>
             </select>
-            
             <button type="submit">Filtrer</button>
             <?php if($search || $secteur_filter): ?>
-                <a href="liste_missions.php" style="padding: 8px 12px; background: #e0e0e0; color: #333; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 12px;">Réinitialiser</a>
+                <a href="liste_missions.php" style="padding: 12px 20px; text-decoration: none; color: #dc3545; border: 2px solid #dc3545; border-radius: 10px; font-weight: 600;">Réinitialiser</a>
             <?php endif; ?>
         </form>
 
-        <div class="stats">
-            <div class="stat-item">
-                <div class="number"><?php echo $total_missions; ?></div>
-                <div class="label">Mission<?php echo $total_missions > 1 ? 's' : ''; ?></div>
+        <div class="stats-grid">
+            <div class="stat-card">
+                <h3>Total des missions</h3>
+                <div class="stat-value"><?php echo $total_missions; ?></div>
             </div>
-            <div class="stat-item">
-                <div class="number" style="color: #28a745;"><?php echo number_format($total_km, 0, ',', ' '); ?> km</div>
-                <div class="label">Kilomètres totaux</div>
+            <div class="stat-card">
+                <h3>Total des kilomètres</h3>
+                <div class="stat-value"><?php echo number_format($total_km, 0, ',', ' '); ?> km</div>
+            </div>
+            <div class="stat-card">
+                <h3>Moyenne km/mission</h3>
+                <div class="stat-value"><?php echo $total_missions > 0 ? number_format($total_km / $total_missions, 1, ',', ' ') : '0'; ?> km</div>
             </div>
         </div>
 
         <?php if(empty($missions)): ?>
-            <div class="no-results">
-                😕 Aucune mission trouvée avec ces critères.
+            <div class="no-missions">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M9 2a1 1 0 0 0-.894.553L7.382 4H4a1 1 0 0 0-1 1v3a1 1 0 0 0 .553.894L5 9.618V20a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V9.618l1.447-.724A1 1 0 0 0 21 8V5a1 1 0 0 0-1-1h-3.382l-.724-1.447A1 1 0 0 0 15 2H9zm0 2h6l.618 1.236A1 1 0 0 0 16.382 6H20v1.382l-1.447.724a1 1 0 0 0-.553.894V20H6V8.999a1 1 0 0 0-.553-.894L4 7.382V6h3.618a1 1 0 0 0 .765-.447L9 4z"/>
+                </svg>
+                <h3>Aucune mission trouvée</h3>
+                <p>Essayez de modifier vos critères de recherche</p>
             </div>
         <?php else: ?>
-            <div class="tabs-container">
-                <!-- Onglets des mois -->
-                <div class="tabs">
-                    <?php 
-                    $isFirst = true;
-                    foreach($missionsByMonth as $monthKey => $monthData): 
-                        $isCurrentMonth = ($monthKey === $currentMonthKey);
-                    ?>
-                        <div class="tab <?php echo $isFirst ? 'active' : ''; ?> <?php echo $isCurrentMonth ? 'current-month' : ''; ?>" onclick="switchTab('<?php echo $monthKey; ?>')">
-                            <?php echo $monthData['label']; ?>
-                            <span class="tab-badge"><?php echo $monthData['count']; ?></span>
-                        </div>
-                    <?php 
-                        $isFirst = false;
-                    endforeach; 
-                    ?>
-                </div>
+            <div class="tabs">
+                <?php 
+                $isFirstTab = true;
+                foreach($missionsByMonth as $monthKey => $monthData): 
+                ?>
+                    <button class="tab <?php echo $isFirstTab ? 'active' : ''; ?>" onclick="switchTab('<?php echo $monthKey; ?>')">
+                        <?php echo $monthData['label']; ?> (<?php echo $monthData['count']; ?>)
+                    </button>
+                <?php 
+                    $isFirstTab = false;
+                endforeach; 
+                ?>
+            </div>
 
-                <!-- Contenu des onglets -->
+            <div class="tab-contents">
                 <?php 
                 $isFirst = true;
                 foreach($missionsByMonth as $monthKey => $monthData): 
                 ?>
                     <div id="tab-<?php echo $monthKey; ?>" class="tab-content <?php echo $isFirst ? 'active' : ''; ?>">
-                        <!-- Statistiques du mois -->
-                        <div class="month-stats">
-                            <div class="month-stat-item">
-                                <div class="number"><?php echo $monthData['count']; ?></div>
-                                <div class="label">Mission<?php echo $monthData['count'] > 1 ? 's' : ''; ?></div>
-                            </div>
-                            <div class="month-stat-item">
-                                <div class="number"><?php echo number_format($monthData['km_total'], 0, ',', ' '); ?> km</div>
-                                <div class="label">Total kilomètres</div>
+                        <div class="month-header">
+                            <h2><?php echo $monthData['label']; ?></h2>
+                            <div class="month-stats">
+                                <div class="month-stat">
+                                    <div class="month-stat-label">Missions</div>
+                                    <div class="month-stat-value"><?php echo $monthData['count']; ?></div>
+                                </div>
+                                <div class="month-stat">
+                                    <div class="month-stat-label">Kilomètres</div>
+                                    <div class="month-stat-value"><?php echo number_format($monthData['km_total'], 0, ',', ' '); ?> km</div>
+                                </div>
                             </div>
                         </div>
 
-                        <!-- Tableau des missions -->
-                        <div class="table-wrapper">
+                        <div class="missions-table">
                             <table>
                                 <thead>
                                     <tr>
@@ -663,21 +631,19 @@ foreach($missions as $m) {
                                         <th>Heure RDV</th>
                                         <th>Bénévole</th>
                                         <th>Aidé</th>
-                                        <th>Secteur Aidé</th>
-                                        <th>Adresse Aidé</th>
+                                        <th>Secteur</th>
+                                        <th>Adresse aidé</th>
                                         <th>Destination</th>
                                         <th>Nature</th>
                                         <th>Commentaires</th>
-                                        <th>KM Saisis</th>
-                                        <th>KM Calculés</th>
+                                        <th>Km saisis</th>
+                                        <th>Km calculés</th>
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    <?php foreach($monthData['missions'] as $mission): 
-                                        $isToday = ($mission['date_mission'] === $currentDate);
-                                    ?>
-                                        <tr class="<?php echo $isToday ? 'today' : ''; ?>" onclick='showDetails(<?php echo json_encode($mission, JSON_HEX_APOS | JSON_HEX_QUOT); ?>)'>
-                                            <td><strong><?php echo date('d/m/Y', strtotime($mission['date_mission'])); ?></strong></td>
+                                    <?php foreach($monthData['missions'] as $mission): ?>
+                                        <tr onclick='showDetails(<?php echo json_encode($mission, JSON_HEX_APOS | JSON_HEX_QUOT); ?>)'>
+                                            <td><?php echo date('d/m/Y', strtotime($mission['date_mission'])); ?></td>
                                             <td><?php echo $mission['heure_rdv'] ? substr($mission['heure_rdv'], 0, 5) : '-'; ?></td>
                                             <td><?php echo htmlspecialchars($mission['benevole'] ?: ''); ?></td>
                                             <td><?php echo htmlspecialchars($mission['aide']); ?></td>

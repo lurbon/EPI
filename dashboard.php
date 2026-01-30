@@ -581,9 +581,10 @@ if (!$utilisateur || !$token) {
                    
                 `;
 
-                document.getElementById('statsBlockTitle').textContent = 'Autres actions';
+        document.getElementById('statsBlockTitle').textContent = 'Autres actions';
                 document.getElementById('statsBlockGrid').innerHTML = `
                      ${createMenuCard('🚌', 'Minibus',   null,'minibus.php')}
+					 ${createMenuCard('🚌', 'Stats secteur',   null,'stats_secteurs.php')}
                 `;
             }
 
@@ -611,10 +612,26 @@ if (!$utilisateur || !$token) {
                         ${createMenuCard('🚗⌚', 'Saisie KM et heures', null, 'saisie_km.php')}
                     </div>
                 `;
+				// Restructurer le bloc secondaire (Autres)
+                document.getElementById('secondaryBlock').querySelector('.header-section').style.display = 'none';                
+                document.getElementById('secondaryBlockGrid').style.display = 'grid';
+                document.getElementById('secondaryBlockGrid').style.gridTemplateColumns = '200px 1fr';
+                document.getElementById('secondaryBlockGrid').style.gap = '20px';
+                document.getElementById('secondaryBlockGrid').style.alignItems = 'center';
+                document.getElementById('secondaryBlockGrid').style.flex = '1';
+                
+                document.getElementById('secondaryBlockGrid').innerHTML = `
+                    <div style="display: flex; justify-content: center; align-items: center;">
+                        <img src="img/Logo-Entraide-Plus-Iroise.jpg" alt="Logo" style="width: 180px; height: auto; object-fit: contain;">
+                    </div>
+                    <div style="display: grid; grid-template-columns: 1fr; gap: 12px;">
+                        <div style="color: #667eea; font-size: 24px; font-weight: 800; margin-bottom: 10px;">Autres</div>
+						${createMenuCard('🚌', 'Stats secteur',   null,'stats_secteurs.php')}
+                    </div>
+                `;
 
                 // Masquer les blocs non utilisés pour les bénévoles
-                document.getElementById('secondaryBlock').style.display = 'none';
-                document.getElementById('infoBlock').style.display = 'none';
+                  document.getElementById('infoBlock').style.display = 'none';
                 document.getElementById('statsBlock').style.display = 'none';
             }
 
@@ -624,8 +641,7 @@ if (!$utilisateur || !$token) {
                 document.querySelector('.top-section').classList.add('benevole-layout');
                 
                 // Restructurer le bloc principal (Gestion des missions)
-                document.getElementById('mainBlock').querySelector('.header-section').style.display = 'none';
-                
+                document.getElementById('mainBlock').querySelector('.header-section').style.display = 'none';                
                 document.getElementById('mainBlockGrid').style.display = 'grid';
                 document.getElementById('mainBlockGrid').style.gridTemplateColumns = '200px 1fr';
                 document.getElementById('mainBlockGrid').style.gap = '20px';
@@ -639,7 +655,7 @@ if (!$utilisateur || !$token) {
                     <div style="display: grid; grid-template-columns: 1fr; gap: 12px;">
                         <div style="color: #667eea; font-size: 24px; font-weight: 800; margin-bottom: 10px;">Gestion des missions</div>
                            ${createMenuCard('👤', userFirstName + ' - Vos missions', null, 'vos_missions.php')}
-                        ${createMenuCard('🚗⌚', 'Saisie KM et heures', null, 'saisie_km.php')}
+                           ${createMenuCard('🚗⌚', 'Saisie KM et heures', null, 'saisie_km.php')}
                     </div>
                 `;
                 
@@ -659,6 +675,7 @@ if (!$utilisateur || !$token) {
                     <div style="display: grid; grid-template-columns: 1fr; gap: 12px;">
                         <div style="color: #667eea; font-size: 24px; font-weight: 800; margin-bottom: 10px;">Autres</div>
                         ${createMenuCard('🚌', 'Minibus', null, 'minibus.php')}
+						${createMenuCard('🚌', 'Stats secteur',   null,'stats_secteurs.php')}
                     </div>
                 `;
 

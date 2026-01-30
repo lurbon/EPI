@@ -641,6 +641,7 @@ $total_minutes = $total_duree_minutes % 60;
                             <div class="month-stat-item">
                                 <div class="number"><?php echo number_format($monthData['km_total'], 0, ',', ' '); ?> km</div>
                                 <div class="label">Total kilom&egrave;tres</div>
+                                <div class="label">Total kilom&egrave;tres</div>
                             </div>
                             <div class="month-stat-item">
                                 <div class="number"><?php echo $mHeures; ?>h<?php echo str_pad($mMinutes, 2, '0', STR_PAD_LEFT); ?></div>
@@ -658,8 +659,8 @@ $total_minutes = $total_duree_minutes % 60;
                                         <th>Adresse Aid&eacute;</th>
                                         <th>Destination</th>
                                         <th>Nature</th>
-                                        <th>KM</th>
-                                        <th>Dur&eacute;e</th>
+                                        <th>KM saisi</th>
+                                        <th>KM calculé</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -697,19 +698,13 @@ $total_minutes = $total_duree_minutes % 60;
                                             </td>
                                             <td>
                                                 <?php
-                                                $km = $mission['km_saisi'] ?: $mission['km_calcule'] ?: 0;
-                                                if($km > 0): ?>
-                                                    <strong style="color: #667eea;"><?php echo $km; ?> km</strong>
-                                                <?php else: ?>
-                                                    <span style="color: #999;">-</span>
+                                                if($mission['km_saisi'] !== null && $mission['km_saisi'] !== ''): ?>
+												<strong style="color: #667eea;"><?php echo $mission['km_saisi']; ?> km</strong>												                                                
                                                 <?php endif; ?>
                                             </td>
                                             <td>
-                                                <?php if($mission['duree']):
-                                                    list($h, $m, $s) = explode(':', $mission['duree']);
-                                                    echo $h > 0 ? $h . 'h' . $m : $m . 'min';
-                                                else: ?>
-                                                    <span style="color: #999;">-</span>
+                                                <?php if($mission['km_calcule'] !== null && $mission['km_calcule'] !== ''): ?>
+												<strong style="color: #28a745;"><?php echo $mission['km_calcule']; ?> km</strong>
                                                 <?php endif; ?>
                                             </td>
                                         </tr>
