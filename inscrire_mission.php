@@ -47,10 +47,12 @@ function formatPhone($phone) {
 $missionId = isset($_GET['mission']) ? intval($_GET['mission']) : 0;
 $email = isset($_GET['email']) ? $_GET['email'] : '';
 $token = isset($_GET['token']) ? $_GET['token'] : '';
+$confirmed = isset($_GET['confirmed']) ? $_GET['confirmed'] : '0'; // Nouveau paramètre pour vérifier la confirmation
 
 $status = '';
 $message = '';
 $missionDetails = null;
+$showConfirmation = false; // Flag pour afficher la popup
 
 // Vérifier que tous les paramètres sont présents
 if ($missionId && $email && $token) {
@@ -117,241 +119,136 @@ if ($missionId && $email && $token) {
                     $message = 'Cette mission a déjà été attribuée à un autre bénévole.';
                     $missionDetails = $mission;
                 } else {
-                    // Mission disponible, on l'attribue avec TOUTES les informations du bénévole
-                    $nomComplet = $benevole['nom'];
-                    
-                    $sqlUpdate = "UPDATE EPI_mission SET 
-                                    id_benevole = :benevole_id,
-                                    benevole = :benevole_nom,
-                                    adresse_benevole = :adresse_benevole,
-                                    cp_benevole = :cp_benevole,
-                                    commune_benevole = :commune_benevole,
-                                    secteur_benevole = :secteur_benevole
-                                  WHERE id_mission = :mission_id";
-                    
-                    $stmtUpdate = $conn->prepare($sqlUpdate);
-                    $stmtUpdate->execute([
-                        'benevole_id' => $benevole['id_benevole'],
-                        'benevole_nom' => $nomComplet,
-                        'adresse_benevole' => $benevole['adresse'] ?? '',
-                        'cp_benevole' => $benevole['code_postal'] ?? '',
-                        'commune_benevole' => $benevole['commune'] ?? '',
-                        'secteur_benevole' => $benevole['secteur'] ?? '',
-                        'mission_id' => $missionId
-                    ]);
-                    
-                    $status = 'success';
-                    $message = 'Félicitations ! Vous avez été inscrit(e) avec succès à cette mission.';
+                    // Mission disponible
                     $missionDetails = $mission;
                     
-                    // Email de confirmation COMPLET avec toutes les informations
-                    $headers = "From: noreply@votre-association.fr\r\n";
-                    $headers .= "Content-Type: text/html; charset=UTF-8\r\n";
-                    
-                    $aideNomComplet = $mission['aide_nom'];
-                    
-                    // Construction de l'email avec TABLE pour compatibilité maximale
-                    $confirmationEmail = '<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
-<html xmlns="http://www.w3.org/1999/xhtml">
-<head>
-    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-    <title>Inscription confirmée</title>
-    <style type="text/css">
-        body { margin: 0; padding: 0; -webkit-text-size-adjust: 100%; -ms-text-size-adjust: 100%; }
-        table { border-collapse: collapse; mso-table-lspace: 0pt; mso-table-rspace: 0pt; }
-        img { border: 0; height: auto; line-height: 100%; outline: none; text-decoration: none; -ms-interpolation-mode: bicubic; }
-        p { display: block; margin: 13px 0; }
-    </style>
-    <!--[if mso]>
-    <style type="text/css">
-    body, table, td {font-family: Arial, Helvetica, sans-serif !important;}
-    </style>
-    <![endif]-->
-</head>
-<body style="margin: 0; padding: 0; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); background-color: #667eea;">
-    <table border="0" cellpadding="0" cellspacing="0" width="100%" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); background-color: #667eea; min-height: 100vh;">
-        <tr>
-            <td align="center" style="padding: 20px 10px;">
-                <!-- Container principal -->
-                <table border="0" cellpadding="0" cellspacing="0" width="600" style="max-width: 600px; background-color: #ffffff; border-radius: 20px; box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);">
-                    <!-- Header -->
-                    <tr>
-                        <td align="center" style="background: linear-gradient(135deg, #28a745 0%, #20c997 100%); background-color: #28a745; padding: 30px; border-radius: 20px 20px 0 0;">
-                            <h1 style="margin: 0; font-size: 48px; margin-bottom: 10px; color: #ffffff; font-family: \'Segoe UI\', Tahoma, Geneva, Verdana, sans-serif;">✅</h1>
-                            <h2 style="margin: 0; font-size: 24px; font-weight: normal; color: #ffffff; font-family: \'Segoe UI\', Tahoma, Geneva, Verdana, sans-serif;">Inscription réussie !</h2>
-                        </td>
-                    </tr>
-                    
-                    <!-- Content -->
-                    <tr>
-                        <td style="padding: 30px; font-family: \'Segoe UI\', Tahoma, Geneva, Verdana, sans-serif;">
-                            <!-- Greeting -->
-                            <table border="0" cellpadding="0" cellspacing="0" width="100%">
-                                <tr>
-                                    <td style="font-size: 18px; color: #333; margin-bottom: 30px; line-height: 1.6;">
-                                        Bonjour <strong>' . htmlspecialchars($benevole['nom']) . '</strong>,<br><br>
-                                        Votre inscription à la mission du <strong>' . formatDate($mission['date_mission']) . '</strong> a bien été enregistrée.
-                                    </td>
-                                </tr>
-                            </table>
-                            
-                            <!-- Mission Details Block -->
-                            <table border="0" cellpadding="0" cellspacing="0" width="100%" style="background-color: #f8f9fa; border-left: 4px solid #667eea; border-radius: 8px; margin-top: 20px; margin-bottom: 20px;">
-                                <tr>
-                                    <td style="padding: 20px;">
-                                        <h3 style="color: #667eea; margin: 0 0 15px 0; font-size: 18px; font-family: \'Segoe UI\', Tahoma, Geneva, Verdana, sans-serif;">📋 Détails de votre mission</h3>
-                                        
-                                        <!-- Aide Name -->
-                                        <table border="0" cellpadding="0" cellspacing="0" width="100%" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); background-color: #667eea; border-radius: 8px; margin: 20px 0;">
-                                            <tr>
-                                                <td align="center" style="padding: 15px; color: #ffffff; font-size: 20px; font-weight: bold; font-family: \'Segoe UI\', Tahoma, Geneva, Verdana, sans-serif;">
-                                                    👤 ' . htmlspecialchars($aideNomComplet) . '
-                                                </td>
-                                            </tr>
-                                        </table>
-                                        
-                                        <!-- Date et heure -->
-                                        <table border="0" cellpadding="0" cellspacing="0" width="100%" style="background-color: #ffffff; border-radius: 6px; margin: 12px 0;">
-                                            <tr>
-                                                <td style="padding: 10px; font-family: \'Segoe UI\', Tahoma, Geneva, Verdana, sans-serif;">
-                                                    <strong style="color: #333; display: block; margin-bottom: 5px;">📅 Date et heure</strong>
-                                                    <span style="color: #666;">' . formatDate($mission['date_mission']) . 
-                                                    (!empty($mission['heure_rdv']) ? ' à ' . substr($mission['heure_rdv'], 0, 5) : '') . '</span>
-                                                </td>
-                                            </tr>
-                                        </table>
-                                        
-                                        <!-- Adresse de départ -->
-                                        <table border="0" cellpadding="0" cellspacing="0" width="100%" style="background-color: #ffffff; border-radius: 6px; margin: 12px 0;">
-                                            <tr>
-                                                <td style="padding: 10px; font-family: \'Segoe UI\', Tahoma, Geneva, Verdana, sans-serif;">
-                                                    <strong style="color: #333; display: block; margin-bottom: 5px;">🏠 Adresse de départ</strong>
-                                                    <span style="color: #666;">' . htmlspecialchars($mission['aide_adresse'] ?? '') . '<br>' .
-                                                    htmlspecialchars($mission['aide_cp'] ?? '') . ' ' . htmlspecialchars($mission['aide_commune'] ?? '') . '</span>
-                                                </td>
-                                            </tr>
-                                        </table>
-                                        
-                                        <!-- Contact -->
-                                        <table border="0" cellpadding="0" cellspacing="0" width="100%" style="background-color: #ffffff; border-radius: 6px; margin: 12px 0;">
-                                            <tr>
-                                                <td style="padding: 10px; font-family: \'Segoe UI\', Tahoma, Geneva, Verdana, sans-serif;">
-                                                    <strong style="color: #333; display: block; margin-bottom: 5px;">📞 Contact</strong>
-                                                    <span style="color: #666;">';
-                    if (!empty($mission['aide_tel_fixe'])) {
-                        $confirmationEmail .= 'Fixe: ' . formatPhone($mission['aide_tel_fixe']) . '<br>';
-                    }
-                    if (!empty($mission['aide_tel_portable'])) {
-                        $confirmationEmail .= 'Mobile: ' . formatPhone($mission['aide_tel_portable']);
-                    }
-                    if (empty($mission['aide_tel_fixe']) && empty($mission['aide_tel_portable'])) {
-                        $confirmationEmail .= 'Non renseigné';
-                    }
-                    $confirmationEmail .= '</span>
-                                                </td>
-                                            </tr>
-                                        </table>';
+                    // Si pas encore confirmé, afficher la popup
+                    if ($confirmed !== '1') {
+                        $showConfirmation = true;
+                        $status = 'pending';
+                    } else {
+                        // Confirmation reçue, on procède à l'inscription
+                        $nomComplet = $benevole['nom'];
+                        
+                        $sqlUpdate = "UPDATE EPI_mission SET 
+                                        id_benevole = :benevole_id,
+                                        benevole = :benevole_nom,
+                                        adresse_benevole = :adresse_benevole,
+                                        cp_benevole = :cp_benevole,
+                                        commune_benevole = :commune_benevole,
+                                        secteur_benevole = :secteur_benevole,
+                                        email_inscript = :email_inscript,
+                                        date_inscript = NOW()
+                                      WHERE id_mission = :mission_id";
+                        
+                        $stmtUpdate = $conn->prepare($sqlUpdate);
+                        $stmtUpdate->execute([
+                            'benevole_id' => $benevole['id_benevole'],
+                            'benevole_nom' => $nomComplet,
+                            'adresse_benevole' => $benevole['adresse'] ?? '',
+                            'cp_benevole' => $benevole['code_postal'] ?? '',
+                            'commune_benevole' => $benevole['commune'] ?? '',
+                            'secteur_benevole' => $benevole['secteur'] ?? '',
+                            'email_inscript' => $email,
+                            'mission_id' => $missionId
+                        ]);
+                        
+                        $status = 'success';
+                        $message = 'Félicitations ! Vous avez été inscrit(e) avec succès à cette mission.';
+                        
+                        // Email de confirmation (code email inchangé...)
+                        $headers = "From: noreply@votre-association.fr\r\n";
+                        $headers .= "Content-Type: text/html; charset=UTF-8\r\n";
+                        
+                        $aideNomComplet = $mission['aide_nom'];
+                        
+                        $confirmationEmail = '<!DOCTYPE html>
+<html>
+<head><meta charset="UTF-8"><title>Confirmation</title></head>
+<body style="margin:0;padding:0;font-family:Arial,sans-serif;">
+<div style="background:#667eea;padding:40px 20px;">
+<div style="max-width:600px;margin:0 auto;background:white;border-radius:10px;overflow:hidden;">
+<div style="background:#28a745;color:white;padding:30px;text-align:center;">
+<h1 style="margin:0;font-size:36px;">✅</h1>
+<h2 style="margin:10px 0 0;">Inscription confirmée !</h2>
+</div>
+<div style="padding:30px;">
+<p>Bonjour ' . htmlspecialchars($nomComplet) . ',</p>
+<p>Votre inscription à la mission a bien été enregistrée.</p>
+<div style="background:#667eea;color:white;padding:15px;border-radius:8px;text-align:center;margin:20px 0;">
+<strong>👤 ' . htmlspecialchars($aideNomComplet) . '</strong>
+</div>
+<div style="background:#f8f9fa;padding:15px;border-radius:8px;margin:10px 0;">
+<strong style="color:#667eea;">📅 Date et heure</strong><br>
+' . formatDate($mission['date_mission']) . (!empty($mission['heure_rdv']) ? ' à ' . substr($mission['heure_rdv'], 0, 5) : '') . '
+</div>
+<div style="background:#f8f9fa;padding:15px;border-radius:8px;margin:10px 0;">
+<strong style="color:#667eea;">🏠 Adresse de départ</strong><br>
+' . htmlspecialchars($mission['aide_adresse']) . '<br>' . htmlspecialchars($mission['aide_cp']) . ' ' . htmlspecialchars($mission['aide_commune']) . '
+</div>';
 
-                    // AJOUT : Commentaires de l'aidé
-                    if (!empty($mission['aide_commentaires'])) {
-                        $confirmationEmail .= '
-                                        <!-- Commentaires aidé -->
-                                        <table border="0" cellpadding="0" cellspacing="0" width="100%" style="background-color: #e7f3ff; border-radius: 6px; border-left: 4px solid #2196F3; margin: 12px 0;">
-                                            <tr>
-                                                <td style="padding: 10px; font-family: \'Segoe UI\', Tahoma, Geneva, Verdana, sans-serif;">
-                                                    <strong style="color: #333; display: block; margin-bottom: 5px;">ℹ️ Informations sur la personne accompagnée</strong>
-                                                    <span style="color: #666;">' . nl2br(htmlspecialchars($mission['aide_commentaires'])) . '</span>
-                                                </td>
-                                            </tr>
-                                        </table>';
-                    }
+if (!empty($mission['aide_tel_fixe']) || !empty($mission['aide_tel_portable'])) {
+    $confirmationEmail .= '<div style="background:#f8f9fa;padding:15px;border-radius:8px;margin:10px 0;">
+<strong style="color:#667eea;">📞 Contact</strong><br>';
+    if (!empty($mission['aide_tel_fixe'])) {
+        $confirmationEmail .= 'Fixe: ' . formatPhone($mission['aide_tel_fixe']) . '<br>';
+    }
+    if (!empty($mission['aide_tel_portable'])) {
+        $confirmationEmail .= 'Mobile: ' . formatPhone($mission['aide_tel_portable']);
+    }
+    $confirmationEmail .= '</div>';
+}
 
-                    // Destination
-                    if (!empty($mission['adresse_destination']) || !empty($mission['commune_destination'])) {
-                        $confirmationEmail .= '
-                                        <!-- Destination -->
-                                        <table border="0" cellpadding="0" cellspacing="0" width="100%" style="background-color: #fff3cd; border-radius: 6px; margin: 12px 0;">
-                                            <tr>
-                                                <td style="padding: 10px; font-family: \'Segoe UI\', Tahoma, Geneva, Verdana, sans-serif;">
-                                                    <strong style="color: #333; display: block; margin-bottom: 5px;">🎯 Destination</strong>
-                                                    <span style="color: #666;">';
-                        if (!empty($mission['adresse_destination'])) {
-                            $confirmationEmail .= htmlspecialchars($mission['adresse_destination']) . '<br>';
-                        }
-                        if (!empty($mission['commune_destination'])) {
-                            $confirmationEmail .= htmlspecialchars($mission['cp_destination'] ?? '') . ' ' . htmlspecialchars($mission['commune_destination']);
-                        }
-                        $confirmationEmail .= '</span>
-                                                </td>
-                                            </tr>
-                                        </table>';
-                    }
+if (!empty($mission['aide_commentaires'])) {
+    $confirmationEmail .= '<div style="background:#e7f3ff;padding:15px;border-radius:8px;margin:10px 0;border-left:4px solid #2196F3;">
+<strong style="color:#2196F3;">ℹ️ Informations sur la personne</strong><br>
+' . nl2br(htmlspecialchars($mission['aide_commentaires'])) . '
+</div>';
+}
 
-                    // Nature intervention
-                    if (!empty($mission['nature_intervention'])) {
-                        $confirmationEmail .= '
-                                        <!-- Nature intervention -->
-                                        <table border="0" cellpadding="0" cellspacing="0" width="100%" style="background-color: #ffffff; border-radius: 6px; margin: 12px 0;">
-                                            <tr>
-                                                <td style="padding: 10px; font-family: \'Segoe UI\', Tahoma, Geneva, Verdana, sans-serif;">
-                                                    <strong style="color: #333; display: block; margin-bottom: 5px;">📖 Nature de l\'intervention</strong>
-                                                    <span style="color: #666;">' . htmlspecialchars($mission['nature_intervention']) . '</span>
-                                                </td>
-                                            </tr>
-                                        </table>';
-                    }
+if (!empty($mission['adresse_destination']) || !empty($mission['commune_destination'])) {
+    $confirmationEmail .= '<div style="background:#fff3cd;padding:15px;border-radius:8px;margin:10px 0;">
+<strong style="color:#856404;">🎯 Destination</strong><br>';
+    if (!empty($mission['adresse_destination'])) {
+        $confirmationEmail .= htmlspecialchars($mission['adresse_destination']) . '<br>';
+    }
+    if (!empty($mission['commune_destination'])) {
+        $confirmationEmail .= htmlspecialchars($mission['cp_destination']) . ' ' . htmlspecialchars($mission['commune_destination']);
+    }
+    $confirmationEmail .= '</div>';
+}
 
-                    // Commentaires mission
-                    if (!empty($mission['commentaires'])) {
-                        $confirmationEmail .= '
-                                        <!-- Commentaires mission -->
-                                        <table border="0" cellpadding="0" cellspacing="0" width="100%" style="background-color: #ffffff; border-radius: 6px; margin: 12px 0;">
-                                            <tr>
-                                                <td style="padding: 10px; font-family: \'Segoe UI\', Tahoma, Geneva, Verdana, sans-serif;">
-                                                    <strong style="color: #333; display: block; margin-bottom: 5px;">💬 Commentaires sur la mission</strong>
-                                                    <span style="color: #666;">' . nl2br(htmlspecialchars($mission['commentaires'])) . '</span>
-                                                </td>
-                                            </tr>
-                                        </table>';
-                    }
+if (!empty($mission['nature_intervention'])) {
+    $confirmationEmail .= '<div style="background:#f8f9fa;padding:15px;border-radius:8px;margin:10px 0;">
+<strong style="color:#667eea;">📖 Nature de l\'intervention</strong><br>
+' . htmlspecialchars($mission['nature_intervention']) . '
+</div>';
+}
 
-                    $confirmationEmail .= '
-                                    </td>
-                                </tr>
-                            </table>
-                            
-                            <!-- Important Note -->
-                            <table border="0" cellpadding="0" cellspacing="0" width="100%" style="background-color: #d4edda; border-radius: 8px; border-left: 4px solid #28a745; margin: 20px 0;">
-                                <tr>
-                                    <td style="padding: 15px; color: #155724; font-family: \'Segoe UI\', Tahoma, Geneva, Verdana, sans-serif;">
-                                        ⚠️ Merci de contacter la personne accompagnée pour confirmer le rendez-vous et les détails pratiques de la mission ⚠️
-                                    </td>
-                                </tr>
-                            </table>
-                        </td>
-                    </tr>
-                    
-                    <!-- Footer -->
-                    <tr>
-                        <td align="center" style="background-color: #f8f9fa; padding: 20px; color: #666; font-size: 13px; font-family: \'Segoe UI\', Tahoma, Geneva, Verdana, sans-serif; border-radius: 0 0 20px 20px;">
-                            Cet email a été envoyé automatiquement, merci de ne pas y répondre.<br>
-                            Pour toute question, contactez votre coordinateur.
-                        </td>
-                    </tr>
-                </table>
-            </td>
-        </tr>
-    </table>
+if (!empty($mission['commentaires'])) {
+    $confirmationEmail .= '<div style="background:#f8f9fa;padding:15px;border-radius:8px;margin:10px 0;">
+<strong style="color:#667eea;">💬 Commentaires</strong><br>
+' . nl2br(htmlspecialchars($mission['commentaires'])) . '
+</div>';
+}
+
+$confirmationEmail .= '<p style="margin-top:20px;">Merci pour votre engagement ! 🙏</p>
+</div>
+<div style="background:#f8f9fa;padding:20px;text-align:center;">
+<small style="color:#999;">Cet email a été envoyé automatiquement</small>
+</div>
+</div>
+</div>
 </body>
 </html>';
-                    
-                    mail($email, 'Confirmation d\'inscription - Mission du ' . date('d/m/Y', strtotime($mission['date_mission'])), $confirmationEmail, $headers);
+                        
+                        mail($email, '✅ Confirmation d\'inscription à votre mission', $confirmationEmail, $headers);
+                    }
                 }
             }
         } catch(PDOException $e) {
             $status = 'error';
-            $message = 'Erreur lors de l\'inscription : ' . $e->getMessage();
+            $message = 'Une erreur est survenue : ' . $e->getMessage();
         }
     }
 } else {
@@ -373,7 +270,7 @@ if ($missionId && $email && $token) {
         }
 
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             min-height: 100vh;
             display: flex;
@@ -384,27 +281,15 @@ if ($missionId && $email && $token) {
 
         .container {
             background: white;
+            max-width: 800px;
+            width: 100%;
             border-radius: 20px;
             box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-            max-width: 600px;
-            width: 100%;
             overflow: hidden;
-            animation: slideIn 0.5s ease;
-        }
-
-        @keyframes slideIn {
-            from {
-                opacity: 0;
-                transform: translateY(30px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
         }
 
         .header {
-            padding: 30px;
+            padding: 40px 30px;
             text-align: center;
             color: white;
         }
@@ -421,6 +306,10 @@ if ($missionId && $email && $token) {
             background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
         }
 
+        .header.pending {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+
         .header h1 {
             font-size: 48px;
             margin-bottom: 10px;
@@ -428,44 +317,47 @@ if ($missionId && $email && $token) {
 
         .header h2 {
             font-size: 24px;
-            font-weight: normal;
+            font-weight: 500;
         }
 
         .content {
-            padding: 30px;
+            padding: 40px 30px;
         }
 
         .message {
-            font-size: 18px;
-            color: #333;
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
             margin-bottom: 30px;
+            font-size: 16px;
             line-height: 1.6;
-            text-align: center;
+            color: #333;
         }
 
         .mission-details {
             background: #f8f9fa;
-            border-left: 4px solid #667eea;
-            padding: 20px;
-            border-radius: 8px;
-            margin-bottom: 20px;
+            padding: 25px;
+            border-radius: 12px;
+            margin-top: 20px;
         }
 
         .mission-details h3 {
             color: #667eea;
-            margin-bottom: 15px;
+            margin-bottom: 20px;
+            font-size: 22px;
         }
 
         .detail-item {
-            margin: 12px 0;
-            padding: 10px;
             background: white;
-            border-radius: 6px;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            border-left: 4px solid #667eea;
         }
 
         .detail-item strong {
-            color: #333;
             display: block;
+            color: #667eea;
             margin-bottom: 5px;
         }
 
@@ -500,6 +392,10 @@ if ($missionId && $email && $token) {
             font-weight: 600;
             transition: transform 0.3s ease;
             box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+            border: none;
+            font-size: 16px;
+            cursor: pointer;
+            margin: 0 10px;
         }
 
         .btn:hover {
@@ -507,9 +403,98 @@ if ($missionId && $email && $token) {
             box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
         }
 
-        .icon {
-            font-size: 64px;
-            margin-bottom: 20px;
+        .btn-secondary {
+            background: #6c757d;
+            box-shadow: 0 4px 15px rgba(108, 117, 125, 0.3);
+        }
+
+        .btn-secondary:hover {
+            box-shadow: 0 6px 20px rgba(108, 117, 125, 0.4);
+        }
+
+        /* Modal/Popup styles */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(0, 0, 0, 0.6);
+            animation: fadeIn 0.3s;
+        }
+
+        .modal.active {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-content {
+            background-color: white;
+            margin: auto;
+            padding: 0;
+            border-radius: 20px;
+            max-width: 600px;
+            width: 90%;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            animation: slideIn 0.3s;
+        }
+
+        .modal-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            border-radius: 20px 20px 0 0;
+            text-align: center;
+        }
+
+        .modal-header h2 {
+            font-size: 28px;
+            margin-top: 10px;
+        }
+
+        .modal-body {
+            padding: 30px;
+        }
+
+        .modal-footer {
+            padding: 20px 30px 30px;
+            text-align: center;
+        }
+
+        .confirmation-details {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+
+        .confirmation-details p {
+            margin: 10px 0;
+            line-height: 1.6;
+        }
+
+        .confirmation-details strong {
+            color: #667eea;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: translateY(-50px);
+                opacity: 0;
+            }
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
         }
 
         @media (max-width: 600px) {
@@ -524,6 +509,15 @@ if ($missionId && $email && $token) {
             .content {
                 padding: 20px;
             }
+
+            .btn {
+                display: block;
+                margin: 10px 0;
+            }
+
+            .modal-content {
+                width: 95%;
+            }
         }
     </style>
 </head>
@@ -535,6 +529,8 @@ if ($missionId && $email && $token) {
                     ✅
                 <?php elseif ($status === 'warning'): ?>
                     ⚠️
+                <?php elseif ($status === 'pending'): ?>
+                    📋
                 <?php else: ?>
                     ❌
                 <?php endif; ?>
@@ -544,6 +540,8 @@ if ($missionId && $email && $token) {
                     Inscription confirmée !
                 <?php elseif ($status === 'warning'): ?>
                     Mission déjà pourvue
+                <?php elseif ($status === 'pending'): ?>
+                    Détails de la mission
                 <?php else: ?>
                     Erreur
                 <?php endif; ?>
@@ -551,9 +549,11 @@ if ($missionId && $email && $token) {
         </div>
 
         <div class="content">
-            <div class="message">
-                <?php echo htmlspecialchars($message); ?>
-            </div>
+            <?php if (!$showConfirmation): ?>
+                <div class="message">
+                    <?php echo htmlspecialchars($message); ?>
+                </div>
+            <?php endif; ?>
 
             <?php if ($missionDetails): ?>
                 <div class="mission-details">
@@ -633,6 +633,13 @@ if ($missionId && $email && $token) {
                         </p>
                     </div>
                 <?php endif; ?>
+
+                <?php if ($showConfirmation): ?>
+                    <div class="btn-container">
+                        <button onclick="confirmInscription()" class="btn">✅ Confirmer mon inscription</button>
+                        <button onclick="window.close()" class="btn btn-secondary">❌ Annuler</button>
+                    </div>
+                <?php endif; ?>
             <?php endif; ?>
 
             <?php if ($status === 'warning' || $status === 'error'): ?>
@@ -644,5 +651,67 @@ if ($missionId && $email && $token) {
             <?php endif; ?>
         </div>
     </div>
+
+    <!-- Modal de confirmation -->
+    <?php if ($showConfirmation): ?>
+    <div id="confirmModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h1>⚠️</h1>
+                <h2>Confirmer votre inscription</h2>
+            </div>
+            <div class="modal-body">
+                <p style="font-size: 16px; line-height: 1.6; margin-bottom: 20px;">
+                    Vous êtes sur le point de vous inscrire à cette mission. Veuillez confirmer que vous avez bien pris connaissance de tous les détails.
+                </p>
+                <div class="confirmation-details">
+                    <p><strong>📅 Date :</strong> <?php echo formatDate($missionDetails['date_mission']); ?></p>
+                    <p><strong>⏰ Heure :</strong> <?php echo !empty($missionDetails['heure_rdv']) ? substr($missionDetails['heure_rdv'], 0, 5) : 'Non précisée'; ?></p>
+                    <p><strong>👤 Personne accompagnée :</strong> <?php echo htmlspecialchars($missionDetails['aide_nom']); ?></p>
+                    <p><strong>🏠 Lieu de départ :</strong> <?php echo htmlspecialchars($missionDetails['aide_commune']); ?></p>
+                </div>
+                <p style="font-size: 14px; color: #666; margin-top: 20px;">
+                    Une fois confirmée, cette mission vous sera attribuée et vous recevrez un email de confirmation avec tous les détails.
+                </p>
+            </div>
+            <div class="modal-footer">
+                <button onclick="proceedInscription()" class="btn">✅ Oui, je confirme</button>
+                <button onclick="closeModal()" class="btn btn-secondary">❌ Annuler</button>
+            </div>
+        </div>
+    </div>
+    <?php endif; ?>
+
+    <script>
+        <?php if ($showConfirmation): ?>
+        // Afficher la modal au chargement de la page
+        window.addEventListener('DOMContentLoaded', function() {
+            document.getElementById('confirmModal').classList.add('active');
+        });
+
+        function confirmInscription() {
+            document.getElementById('confirmModal').classList.add('active');
+        }
+
+        function closeModal() {
+            document.getElementById('confirmModal').classList.remove('active');
+        }
+
+        function proceedInscription() {
+            // Ajouter le paramètre confirmed=1 à l'URL et recharger
+            const url = new URL(window.location.href);
+            url.searchParams.set('confirmed', '1');
+            window.location.href = url.toString();
+        }
+
+        // Fermer la modal si on clique en dehors
+        window.onclick = function(event) {
+            const modal = document.getElementById('confirmModal');
+            if (event.target === modal) {
+                closeModal();
+            }
+        }
+        <?php endif; ?>
+    </script>
 </body>
 </html>

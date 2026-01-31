@@ -2,7 +2,7 @@
 // Charger la configuration WordPress
 require_once('wp-config.php');
 require_once('auth.php');
-verifierRole(['admin','gestionnaire']);
+verifierRole(['admin','gestionnaire','chauffeur','benevole']);
 
 // Connexion à la base de données
 $serveur = DB_HOST;
@@ -66,12 +66,17 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['id_mission'])) {
             }
         }
 
+        // Récupérer l'email de l'utilisateur connecté
+        $userEmail = $_SESSION['user']['email'] ?? '';
+
         $sql = "UPDATE EPI_mission SET
                 km_saisi = :km_saisi,
                 km_calcule = :km_calcule,
                 heure_depart_mission = :heure_depart_mission,
                 heure_retour_mission = :heure_retour_mission,
-                duree = :duree
+                duree = :duree,
+                email_km = :email_km,
+                date_km = NOW()
                 WHERE id_mission = :id_mission";
 
         $stmt = $conn->prepare($sql);
@@ -91,6 +96,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['id_mission'])) {
             ':heure_depart_mission' => !empty($_POST['heure_depart_mission']) ? $_POST['heure_depart_mission'] : null,
             ':heure_retour_mission' => !empty($_POST['heure_retour_mission']) ? $_POST['heure_retour_mission'] : null,
             ':duree' => $duree,
+            ':email_km' => $userEmail,
             ':id_mission' => $_POST['id_mission']
         ]);
 
@@ -106,8 +112,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['id_mission'])) {
 
 // Récupérer les paramètres de filtre
 $search = isset($_GET['search']) ? $_GET['search'] : '';
-// Case cochée par défaut si le paramètre n'est pas présent
-$filterNoKm = !isset($_GET['filter_no_km']) || $_GET['filter_no_km'] === '1';
 
 // Récupérer les missions
 try {
@@ -119,8 +123,8 @@ try {
             km_saisi, km_calcule, heure_depart_mission, heure_retour_mission, duree
             FROM EPI_mission 
             WHERE benevole IS NOT NULL 
-            AND TRIM(benevole) != ''";
-    
+            AND TRIM(benevole) != ''
+            AND km_saisi IS NULL";    
     $params = [];
 
     // Filtre bénévole : ne voit que ses propres missions
@@ -137,18 +141,13 @@ try {
         $sql .= " AND 1=0";
     }
 
-    // Filtre pour missions sans km saisi
-    if ($filterNoKm) {
-        $sql .= " AND (km_saisi IS NULL OR km_saisi = 0)";
-    }
-
     // Recherche par date, aidé ou bénévole
     if ($search) {
         $sql .= " AND (date_mission LIKE :search OR aide LIKE :search OR benevole LIKE :search)";
         $params[':search'] = "%$search%";
     }
     
-    $sql .= " ORDER BY date_mission DESC, heure_rdv DESC LIMIT 100";
+    $sql .= " ORDER BY date_mission ASC, heure_rdv ASC LIMIT 100";
     
     $stmt = $conn->prepare($sql);
     $stmt->execute($params);
@@ -620,8 +619,8 @@ try {
         <h1>📊 Saisie des Kilomètres et Heures de Mission</h1>
 
         <div class="info-banner">
-            💡 <strong>Astuce :</strong> Les kilomètres sont calculés automatiquement en aller-retour : 
-            Bénévole → Aidé → Destination → Aidé → Bénévole (arrondi à l'entier supérieur)
+            💡 <strong>Calcul normal :</strong> (Bénévole → Aidé + Aidé → Destination) × 2, arrondi à l'entier supérieur.<br>
+            📋 <strong>Mission administrative</strong> (ville aidé = 29840 ADMINISTRATIF) : (Bénévole → Destination) × 2, arrondi à l'entier supérieur.
         </div>
 
         <?php if ($message): ?>
@@ -642,15 +641,7 @@ try {
                                value="<?php echo htmlspecialchars($search); ?>">
                     </div>
                     
-                    <div class="checkbox-group">
-                        <input type="checkbox" 
-                               id="filter_no_km" 
-                               name="filter_no_km" 
-                               value="1" 
-                               <?php echo $filterNoKm ? 'checked' : ''; ?>>
-                        <label for="filter_no_km">Afficher uniquement les missions sans KM saisi</label>
-                    </div>
-                    
+
                     <button type="submit" class="btn-filter">🔍 Filtrer</button>
                 </div>
             </form>
@@ -751,9 +742,9 @@ try {
                                         <label>🚗 KM Saisi (manuel)</label>
                                         <input type="number" 
                                                name="km_saisi" 
-                                               step="0.01"
+                                               step="1"
                                                placeholder="KM manuel"
-                                               value="<?php echo $mission['km_saisi']; ?>">
+                                               value="<?php echo $mission['km_saisi'] !== null ? intval($mission['km_saisi']) : ''; ?>">
                                     </div>
 
                                     <div class="form-group">
@@ -761,9 +752,9 @@ try {
                                         <input type="number" 
                                                id="km_calcule_<?php echo $mission['id_mission']; ?>"
                                                name="km_calcule" 
-                                               step="0.01"
+                                               step="1"
                                                readonly
-                                               value="<?php echo $mission['km_calcule']; ?>">
+                                               value="<?php echo $mission['km_calcule'] !== null ? intval($mission['km_calcule']) : ''; ?>">
                                     </div>
 
                                     <div class="form-group">
@@ -824,8 +815,10 @@ try {
                     throw new Error('Adresses incomplètes pour le calcul');
                 }
 
-                // Vérifier si c'est une mission administrative (Z- Administratif)
-                const isAdministratif = aideNom && aideNom.trim().toUpperCase().startsWith('Z-');
+                // Vérifier si c'est une mission administrative (ville aidé = "29840 ADMINISTRATIF")
+                const isAdministratif = aideCp && aideVille &&
+                    aideCp.trim() === '29840' &&
+                    aideVille.trim().toUpperCase() === 'ADMINISTRATIF';
                 
                 if (isAdministratif) {
                     // CAS ADMINISTRATIF : Seulement Bénévole → Destination × 2
@@ -847,8 +840,8 @@ try {
                     
                     document.getElementById('km_calcule_' + id).value = totalKm;
                     
-                    showCalcMessage(id, `✓ Distance calculée (mission administrative) : ${totalKm} km (${distBenevoleVersDest.toFixed(1)} km × 2, arrondi sup.)
-                        [${distBenevoleVersDest.toFixed(1)}km bénévole→destination direct]`, 'success');
+                    showCalcMessage(id, `✓ Distance calculée (mission administrative) : ${totalKm} km (${Math.round(distBenevoleVersDest)} km × 2, arrondi sup.)
+                        [${Math.round(distBenevoleVersDest)}km bénévole→destination direct]`, 'success');
                         
                 } else {
                     // CAS NORMAL : Bénévole → Aidé → Destination × 2
@@ -881,8 +874,8 @@ try {
                     
                     document.getElementById('km_calcule_' + id).value = totalKm;
                     
-                    showCalcMessage(id, `✓ Distance calculée : ${totalKm} km (${distanceAller.toFixed(1)} km × 2, arrondi sup.)
-                        [${distBenevoleVersAide.toFixed(1)}km bénévole→aidé + ${distAideVersDest.toFixed(1)}km aidé→dest]`, 'success');
+                    showCalcMessage(id, `✓ Distance calculée : ${totalKm} km (${Math.round(distanceAller)} km × 2, arrondi sup.)
+                        [${Math.round(distBenevoleVersAide)}km bénévole→aidé + ${Math.round(distAideVersDest)}km aidé→dest]`, 'success');
                 }
 
             } catch (error) {

@@ -737,6 +737,7 @@ if (isset($_GET['success'])) {
             </div>
         <?php endif; ?>
 
+        <?php if (!isset($_GET['id'])): ?>
         <div class="search-box">
             <label>🔍 Rechercher une mission</label>
             <form method="GET" class="search-row">
@@ -762,6 +763,7 @@ if (isset($_GET['success'])) {
                 </p>
             <?php endif; ?>
         </div>
+        <?php endif; ?>
 
         <?php if($mission): ?>
         
@@ -977,9 +979,11 @@ if (isset($_GET['success'])) {
         </form>
 
         <?php elseif (!isset($_GET['id']) || !$mission): ?>
+            <?php if (!isset($_GET['id'])): ?>
             <div class="no-selection">
                 <p>👆 Utilisez la recherche ci-dessus pour trouver une mission</p>
             </div>
+            <?php endif; ?>
         <?php endif; ?>
     </div>
 

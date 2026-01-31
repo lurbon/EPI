@@ -420,6 +420,16 @@ foreach($missions as $m) {
             background-color: #c8e6c9;
         }
 
+        .link-modifier {
+            color: #667eea;
+            text-decoration: none;
+            font-weight: 600;
+        }
+
+        .link-modifier:hover {
+            text-decoration: underline;
+        }
+
         .badge {
             display: inline-block;
             padding: 3px 7px;
@@ -436,6 +446,46 @@ foreach($missions as $m) {
         .badge-secteur {
             background: #d1ecf1;
             color: #0c5460;
+        }
+
+        .warning-km {
+            display: inline-flex;
+            align-items: center;
+            margin-left: 6px;
+            font-size: 14px;
+            cursor: default;
+            position: relative;
+        }
+
+        .warning-km:hover .warning-km-tooltip {
+            visibility: visible;
+            opacity: 1;
+        }
+
+        .warning-km-tooltip {
+            visibility: hidden;
+            opacity: 0;
+            transition: opacity 0.2s ease;
+            position: absolute;
+            bottom: calc(100% + 6px);
+            left: 50%;
+            transform: translateX(-50%);
+            background: #343a40;
+            color: #fff;
+            font-size: 11px;
+            padding: 5px 9px;
+            border-radius: 5px;
+            white-space: nowrap;
+        }
+
+        .warning-km-tooltip::after {
+            content: '';
+            position: absolute;
+            top: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            border: 5px solid transparent;
+            border-top-color: #343a40;
         }
 
         .no-results {
@@ -679,7 +729,7 @@ foreach($missions as $m) {
                                         <tr class="<?php echo $isToday ? 'today' : ''; ?>" onclick='showDetails(<?php echo json_encode($mission, JSON_HEX_APOS | JSON_HEX_QUOT); ?>)'>
                                             <td><strong><?php echo date('d/m/Y', strtotime($mission['date_mission'])); ?></strong></td>
                                             <td><?php echo $mission['heure_rdv'] ? substr($mission['heure_rdv'], 0, 5) : '-'; ?></td>
-                                            <td><?php echo htmlspecialchars($mission['benevole'] ?: ''); ?></td>
+                                            <td><a href="modifier_mission.php?id=<?php echo intval($mission['id_mission']); ?>" class="link-modifier" onclick="event.stopPropagation()"><?php echo htmlspecialchars($mission['benevole'] ?: ''); ?></a></td>
                                             <td><?php echo htmlspecialchars($mission['aide']); ?></td>
                                             <td>
                                                 <?php if($mission['secteur_aide']): ?>
@@ -718,14 +768,20 @@ foreach($missions as $m) {
                                             <td><?php echo $mission['commentaires'] ? htmlspecialchars($mission['commentaires']) : '-'; ?></td>
                                             <td>
                                                 <?php if($mission['km_saisi'] !== null && $mission['km_saisi'] !== ''): ?>
-                                                    <strong style="color: #667eea;"><?php echo htmlspecialchars($mission['km_saisi']); ?> km</strong>
+                                                    <strong style="color: #667eea;"><?php echo intval($mission['km_saisi']); ?> km</strong>
                                                 <?php else: ?>
                                                     <span style="color: #999;">-</span>
                                                 <?php endif; ?>
                                             </td>
                                             <td>
                                                 <?php if($mission['km_calcule'] !== null && $mission['km_calcule'] !== ''): ?>
-                                                    <span style="color: #28a745;"><?php echo htmlspecialchars($mission['km_calcule']); ?> km</span>
+                                                    <span style="color: #28a745;"><?php echo intval($mission['km_calcule']); ?> km</span>
+                                                    <?php if($mission['km_saisi'] === null): ?>
+                                                    <span class="warning-km">
+                                                        ⚠️
+                                                        <span class="warning-km-tooltip">KM calculé mais pas encore saisi</span>
+                                                    </span>
+                                                    <?php endif; ?>
                                                 <?php else: ?>
                                                     <span style="color: #999;">-</span>
                                                 <?php endif; ?>

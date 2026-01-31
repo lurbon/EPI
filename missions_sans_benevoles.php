@@ -63,10 +63,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['send_email'])) {
     $secteur = $_POST['secteur'];
     $subject = $_POST['subject'];
     $selectedBenevoles = isset($_POST['benevoles']) ? $_POST['benevoles'] : [];
+    $selectedMissions = isset($_POST['missions']) ? $_POST['missions'] : [];
     
-    if (count($selectedBenevoles) > 0) {
+    if (count($selectedBenevoles) > 0 && count($selectedMissions) > 0) {
         try {
-            // Récupérer les missions du secteur
+            // Récupérer uniquement les missions sélectionnées
+            $placeholders = str_repeat('?,', count($selectedMissions) - 1) . '?';
             $sqlMissions = "SELECT 
                                 m.id_mission,
                                 m.date_mission,
@@ -82,17 +84,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['send_email'])) {
                                 a.tel_portable
                             FROM EPI_mission m
                             INNER JOIN EPI_aide a ON m.id_aide = a.id_aide
-                            WHERE a.secteur = :secteur 
+                            WHERE m.id_mission IN ($placeholders)
                             AND (m.id_benevole IS NULL OR m.id_benevole = 0)
                             ORDER BY m.date_mission, m.heure_rdv";
             
             $stmtMissions = $conn->prepare($sqlMissions);
-            $stmtMissions->execute(['secteur' => $secteur]);
+            $stmtMissions->execute($selectedMissions);
             $missions = $stmtMissions->fetchAll(PDO::FETCH_ASSOC);
             
-            $headers = "From: noreply@votre-association.fr\r\n";
-            $headers .= "Reply-To: contact@votre-association.fr\r\n";
-            $headers .= "Content-Type: text/html; charset=UTF-8\r\n";
+            // IMPORTANT: Remplacer 'tondomaine.fr' par ton VRAI domaine partout
+            $domaine = $_SERVER['HTTP_HOST']; // Utilise le même domaine que le serveur
+            
+            // Boundary unique pour multipart
+            $boundary = "----=_NextPart_" . md5(uniqid(time()));
+            
+            // En-têtes améliorés pour éviter les spams
+            $headers = "From: Entraide Plus Iroise <noreply@{$domaine}>\r\n";
+            $headers .= "Reply-To: Entraide Plus Iroise <contact@{$domaine}>\r\n";
+            $headers .= "Return-Path: noreply@{$domaine}\r\n";
+            $headers .= "MIME-Version: 1.0\r\n";
+            $headers .= "Content-Type: multipart/alternative; boundary=\"{$boundary}\"\r\n";
+            $headers .= "X-Mailer: PHP/" . phpversion() . "\r\n";
+            $headers .= "X-Priority: 3\r\n";
+            $headers .= "Message-ID: <" . time() . "-" . md5(uniqid()) . "@{$domaine}>\r\n";
             
             // URL de base pour les inscriptions (à adapter)
             $baseUrl = 'http://' . $_SERVER['HTTP_HOST'] . dirname($_SERVER['PHP_SELF']);
@@ -168,6 +182,49 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['send_email'])) {
                     </div>';
                 }
                 
+                // Créer la version texte brut
+                $textMessage = "NOUVELLES MISSIONS - Secteur : " . $secteur . "\n\n";
+                $textMessage .= "Bonjour,\n\n";
+                $textMessage .= count($missions) . " nouvelle" . (count($missions) > 1 ? 's' : '') . " mission" . (count($missions) > 1 ? 's' : '') . " ";
+                $textMessage .= (count($missions) > 1 ? 'sont' : 'est') . " disponible" . (count($missions) > 1 ? 's' : '') . " sur votre secteur.\n\n";
+                
+                foreach ($missions as $index => $mission) {
+                    $textMessage .= "----------------------------------------\n";
+                    $textMessage .= "MISSION #" . ($index + 1) . " - " . formatDateLong($mission['date_mission']) . "\n\n";
+                    $textMessage .= "Personne aidée : " . $mission['aide_nom'] . "\n";
+                    $textMessage .= "Date : " . formatDate($mission['date_mission']) . " à " . (!empty($mission['heure_rdv']) ? substr($mission['heure_rdv'], 0, 5) : 'Heure non précisée') . "\n";
+                    $textMessage .= "Départ : " . $mission['adresse'] . ", " . $mission['commune'] . "\n";
+                    
+                    if (!empty($mission['adresse_destination']) || !empty($mission['commune_destination'])) {
+                        $textMessage .= "Destination : ";
+                        if (!empty($mission['adresse_destination'])) $textMessage .= $mission['adresse_destination'] . ", ";
+                        if (!empty($mission['commune_destination'])) $textMessage .= $mission['commune_destination'];
+                        $textMessage .= "\n";
+                    }
+                    
+                    if (!empty($mission['nature_intervention'])) {
+                        $textMessage .= "Nature : " . $mission['nature_intervention'] . "\n";
+                    }
+                    
+                    if (!empty($mission['commentaires'])) {
+                        $textMessage .= "Commentaires : " . $mission['commentaires'] . "\n";
+                    }
+                    
+                    $textMessage .= "Contact : ";
+                    if (!empty($mission['tel_fixe'])) $textMessage .= "Fixe: " . formatPhone($mission['tel_fixe']) . " ";
+                    if (!empty($mission['tel_portable'])) $textMessage .= "Mobile: " . formatPhone($mission['tel_portable']);
+                    if (empty($mission['tel_fixe']) && empty($mission['tel_portable'])) $textMessage .= "Non renseigné";
+                    $textMessage .= "\n\n";
+                    
+                    $token = generateSecureToken($mission['id_mission'], $email);
+                    $inscriptionUrl = $baseUrl . '/inscrire_mission.php?mission=' . $mission['id_mission'] . '&email=' . urlencode($email) . '&token=' . $token;
+                    $textMessage .= "Pour vous inscrire : " . $inscriptionUrl . "\n\n";
+                }
+                
+                $textMessage .= "----------------------------------------\n";
+                $textMessage .= "Merci de votre engagement !\n";
+                $textMessage .= "Entraide Plus Iroise\n";
+                
                 $htmlMessage = '
                 <!DOCTYPE html>
                 <html lang="fr">
@@ -198,14 +255,30 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['send_email'])) {
                         </div>
                         
                         <div style="background: #e7f3ff; padding: 20px; text-align: center;">
-                            <p style="color: #667eea; font-weight: bold; margin: 0;">Merci de votre engagement !</p>
+                            <p style="color: #1a5490; font-weight: bold; margin: 0;">Merci de votre engagement !</p>
                         </div>
                         
                     </div>
                 </body>
                 </html>';
                 
-                mail($email, $subject, $htmlMessage, $headers);
+                // Créer le message multipart (texte + HTML)
+                $fullMessage = "--{$boundary}\r\n";
+                $fullMessage .= "Content-Type: text/plain; charset=UTF-8\r\n";
+                $fullMessage .= "Content-Transfer-Encoding: 8bit\r\n\r\n";
+                $fullMessage .= $textMessage . "\r\n\r\n";
+                
+                $fullMessage .= "--{$boundary}\r\n";
+                $fullMessage .= "Content-Type: text/html; charset=UTF-8\r\n";
+                $fullMessage .= "Content-Transfer-Encoding: 8bit\r\n\r\n";
+                $fullMessage .= $htmlMessage . "\r\n\r\n";
+                
+                $fullMessage .= "--{$boundary}--\r\n";
+                
+                // Forcer le Return-Path pour éviter mail-out.cluster127.hosting.ovh.net
+                $additional_params = "-f noreply@{$domaine}";
+                
+                mail($email, $subject, $fullMessage, $headers, $additional_params);
                 $emailCount++;
             }
             
@@ -214,7 +287,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['send_email'])) {
             $emailError = "Erreur lors de l'envoi : " . $e->getMessage();
         }
     } else {
-        $emailError = "Aucun bénévole sélectionné.";
+        if (count($selectedBenevoles) === 0) {
+            $emailError = "Aucun bénévole sélectionné.";
+        } else if (count($selectedMissions) === 0) {
+            $emailError = "Aucune mission sélectionnée.";
+        }
     }
 }
 
@@ -245,6 +322,43 @@ if (isset($_GET['get_benevoles'])) {
         
         $benevoles = $stmtBenevoles->fetchAll(PDO::FETCH_ASSOC);
         echo json_encode($benevoles);
+    } catch(PDOException $e) {
+        echo json_encode(['error' => $e->getMessage()]);
+    }
+    exit;
+}
+
+// Fonction pour récupérer les missions d'un secteur (pour AJAX)
+if (isset($_GET['get_missions'])) {
+    header('Content-Type: application/json');
+    try {
+        if (isset($_GET['secteur'])) {
+            $sqlMissions = "SELECT 
+                                m.id_mission,
+                                m.date_mission,
+                                m.heure_rdv,
+                                m.nature_intervention,
+                                m.adresse_destination,
+                                m.commune_destination,
+                                m.commentaires,
+                                a.nom as aide_nom,
+                                a.adresse,
+                                a.commune,
+                                a.tel_fixe,
+                                a.tel_portable
+                            FROM EPI_mission m
+                            INNER JOIN EPI_aide a ON m.id_aide = a.id_aide
+                            WHERE a.secteur = :secteur 
+                            AND (m.id_benevole IS NULL OR m.id_benevole = 0)
+                            ORDER BY m.date_mission, m.heure_rdv";
+            
+            $stmtMissions = $conn->prepare($sqlMissions);
+            $stmtMissions->execute(['secteur' => $_GET['secteur']]);
+            $missions = $stmtMissions->fetchAll(PDO::FETCH_ASSOC);
+            echo json_encode($missions);
+        } else {
+            echo json_encode(['error' => 'Paramètre secteur manquant']);
+        }
     } catch(PDOException $e) {
         echo json_encode(['error' => $e->getMessage()]);
     }
@@ -521,24 +635,120 @@ $totalMissions = array_sum(array_map('count', $missionsBySecteur));
             box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
         }
 
-        .missions-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
-            gap: 15px;
+        /* Styles pour le tableau des missions */
+        .missions-table {
+            background: white;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
             margin-bottom: 20px;
         }
 
-        .mission-card {
-            background: #f8f9fa;
-            border-left: 4px solid #667eea;
-            padding: 15px;
-            border-radius: 8px;
-            transition: all 0.3s ease;
+        .missions-table table {
+            width: 100%;
+            border-collapse: collapse;
         }
 
-        .mission-card:hover {
-            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
-            transform: translateY(-2px);
+        .missions-table thead {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .missions-table th {
+            padding: 15px 12px;
+            text-align: left;
+            font-weight: 600;
+            font-size: 13px;
+            white-space: nowrap;
+        }
+
+        .missions-table tbody tr {
+            border-bottom: 1px solid #e9ecef;
+            transition: background-color 0.2s ease;
+        }
+
+        .missions-table tbody tr:hover {
+            background-color: #f8f9fa;
+        }
+
+        .missions-table tbody tr:last-child {
+            border-bottom: none;
+        }
+
+        .missions-table td {
+            padding: 12px;
+            vertical-align: top;
+            font-size: 13px;
+        }
+
+        .date-cell {
+            white-space: nowrap;
+        }
+
+        .date-cell strong {
+            color: #667eea;
+            font-weight: 600;
+        }
+
+        .date-cell .time {
+            color: #667eea;
+            font-size: 13px;
+            font-weight: 600;
+        }
+
+        .aide-cell {
+            font-weight: 600;
+            color: #333;
+        }
+
+        .address-cell {
+            line-height: 1.5;
+        }
+
+        .address-cell .commune {
+            color: #666;
+            font-size: 12px;
+        }
+
+        .destination-cell {
+            line-height: 1.5;
+        }
+
+        .destination-cell .commune {
+            color: #666;
+            font-size: 12px;
+        }
+
+        .nature-cell {
+            line-height: 1.5;
+        }
+
+        .nature-badge {
+            background: #fff3cd;
+            color: #856404;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 600;
+            display: inline-block;
+        }
+
+        .comments {
+            margin-top: 8px;
+            font-size: 12px;
+            color: #666;
+            font-style: italic;
+        }
+
+        .contact-cell {
+            line-height: 1.6;
+            font-size: 12px;
+        }
+
+        .not-specified {
+            color: #999;
+            font-style: italic;
+            font-size: 12px;
         }
 
         .mission-title {
@@ -546,45 +756,6 @@ $totalMissions = array_sum(array_map('count', $missionsBySecteur));
             margin-bottom: 15px;
             font-size: 14px;
             font-weight: 600;
-        }
-
-        .aide-name {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            padding: 12px;
-            border-radius: 8px;
-            margin-bottom: 12px;
-            font-size: 16px;
-            font-weight: bold;
-            text-align: center;
-            box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
-        }
-
-        .mission-card p {
-            font-size: 13px;
-            color: #555;
-            margin: 5px 0;
-            line-height: 1.5;
-        }
-
-        .mission-card strong {
-            color: #333;
-        }
-
-        .mission-info {
-            background: white;
-            padding: 10px;
-            border-radius: 4px;
-            margin-top: 8px;
-            border: 1px solid #e9ecef;
-        }
-
-        .destination-highlight {
-            background: #fff3cd;
-            border-left: 3px solid #ffc107;
-            padding: 10px;
-            border-radius: 4px;
-            margin-top: 8px;
         }
 
         .empty-state {
@@ -890,6 +1061,101 @@ $totalMissions = array_sum(array_map('count', $missionsBySecteur));
             font-weight: 600;
         }
 
+        /* Styles pour la liste des missions */
+        .missions-list {
+            max-height: 500px;
+            overflow-y: auto;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            padding: 10px;
+            background: #f8f9fa;
+        }
+
+        .mission-item {
+            background: white;
+            border-left: 4px solid #667eea;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            position: relative;
+        }
+
+        .mission-item:hover {
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.2);
+            transform: translateX(5px);
+        }
+
+        .mission-item.selected {
+            background: #e7f3ff;
+            border-left-color: #28a745;
+        }
+
+        .mission-checkbox-container {
+            display: flex;
+            align-items: start;
+            gap: 12px;
+        }
+
+        .mission-checkbox-container input[type="checkbox"] {
+            width: 20px;
+            height: 20px;
+            margin-top: 3px;
+            cursor: pointer;
+            accent-color: #667eea;
+            flex-shrink: 0;
+        }
+
+        .mission-content {
+            flex: 1;
+        }
+
+        .mission-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .mission-date {
+            font-weight: 600;
+            color: #667eea;
+            font-size: 14px;
+        }
+
+        .mission-aide-name {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-weight: 600;
+            font-size: 14px;
+            display: inline-block;
+            margin-bottom: 8px;
+        }
+
+        .mission-details {
+            font-size: 13px;
+            color: #555;
+            line-height: 1.6;
+        }
+
+        .mission-details strong {
+            color: #333;
+        }
+
+        .mission-nature {
+            background: #fff3cd;
+            padding: 6px 10px;
+            border-radius: 4px;
+            margin-top: 8px;
+            display: inline-block;
+            font-size: 12px;
+            font-weight: 600;
+            color: #856404;
+        }
+
         .loading-spinner {
             text-align: center;
             padding: 20px;
@@ -1030,56 +1296,77 @@ $totalMissions = array_sum(array_map('count', $missionsBySecteur));
                     </div>
 
                     <h3>🎯 Missions en attente</h3>
-                    <div class="missions-grid">
-                        <?php foreach($missions as $index => $mission): ?>
-                            <div class="mission-card">
-                                <div class="mission-title">
-                                    Mission du <?php echo formatDate($mission['date_mission']); ?>
-                                </div>
-                                
-                                <div class="aide-name">
-                                    👤 <?php echo htmlspecialchars($mission['aide_nom']); ?>
-                                </div>
-                                
-                                <p><strong>📅 Rendez-vous :</strong> <?php echo formatDate($mission['date_mission']); ?> à <?php echo !empty($mission['heure_rdv']) ? substr($mission['heure_rdv'], 0, 5) : 'Heure non précisée'; ?></p>
-                                
-                                <div class="mission-info">
-                                    <p><strong>📍 Adresse départ :</strong><br>
-                                    <?php echo htmlspecialchars($mission['adresse']); ?><br>
-                                    <?php echo htmlspecialchars($mission['commune']); ?></p>
-                                </div>
-
-                                <?php if (!empty($mission['adresse_destination']) || !empty($mission['commune_destination'])): ?>
-                                    <div class="destination-highlight">
-                                        <p><strong>🎯 Destination :</strong><br>
-                                        <?php echo !empty($mission['adresse_destination']) ? htmlspecialchars($mission['adresse_destination']) . '<br>' : ''; ?>
-                                        <?php echo !empty($mission['commune_destination']) ? htmlspecialchars($mission['commune_destination']) : ''; ?></p>
-                                    </div>
-                                <?php endif; ?>
-
-                                <?php if (!empty($mission['nature_intervention'])): ?>
-                                    <p><strong>📖 Nature :</strong> <?php echo htmlspecialchars($mission['nature_intervention']); ?></p>
-                                <?php endif; ?>
-
-                                <?php if (!empty($mission['commentaires'])): ?>
-                                    <p><strong>💬 Commentaires :</strong> <?php echo htmlspecialchars($mission['commentaires']); ?></p>
-                                <?php endif; ?>
-
-                                <div class="mission-info">
-                                    <p><strong>📞 Contact :</strong><br>
-                                    <?php if (!empty($mission['tel_fixe'])): ?>
-                                        Fixe: <?php echo formatPhone($mission['tel_fixe']); ?><br>
-                                    <?php endif; ?>
-                                    <?php if (!empty($mission['tel_portable'])): ?>
-                                        Mobile: <?php echo formatPhone($mission['tel_portable']); ?>
-                                    <?php endif; ?>
-                                    <?php if (empty($mission['tel_fixe']) && empty($mission['tel_portable'])): ?>
-                                        Non renseigné
-                                    <?php endif; ?>
-                                    </p>
-                                </div>
-                            </div>
-                        <?php endforeach; ?>
+                    <div class="missions-table">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>📅 Date</th>
+                                    <th>👤 Personne aidée</th>
+                                    <th>📍 Départ</th>
+                                    <th>🎯 Destination</th>
+                                    <th>📖 Nature</th>
+                                    <th>📞 Contact</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <?php foreach($missions as $index => $mission): ?>
+                                    <tr>
+                                        <td>
+                                            <div class="date-cell">
+                                                <strong><?php echo formatDate($mission['date_mission']); ?></strong>
+                                                <strong class="time"> à <?php echo !empty($mission['heure_rdv']) ? substr($mission['heure_rdv'], 0, 5) : 'heure non précisée'; ?></strong>
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <div class="aide-cell">
+                                                <?php echo htmlspecialchars($mission['aide_nom']); ?>
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <div class="address-cell">
+                                                <?php echo htmlspecialchars($mission['adresse']); ?><br>
+                                                <span class="commune"><?php echo htmlspecialchars($mission['commune']); ?></span>
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <div class="destination-cell">
+                                                <?php if (!empty($mission['adresse_destination']) || !empty($mission['commune_destination'])): ?>
+                                                    <?php echo !empty($mission['adresse_destination']) ? htmlspecialchars($mission['adresse_destination']) . '<br>' : ''; ?>
+                                                    <span class="commune"><?php echo !empty($mission['commune_destination']) ? htmlspecialchars($mission['commune_destination']) : ''; ?></span>
+                                                <?php else: ?>
+                                                    <span class="not-specified">-</span>
+                                                <?php endif; ?>
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <div class="nature-cell">
+                                                <?php if (!empty($mission['nature_intervention'])): ?>
+                                                    <span class="nature-badge"><?php echo htmlspecialchars($mission['nature_intervention']); ?></span>
+                                                <?php else: ?>
+                                                    <span class="not-specified">-</span>
+                                                <?php endif; ?>
+                                                <?php if (!empty($mission['commentaires'])): ?>
+                                                    <div class="comments">💬 <?php echo htmlspecialchars($mission['commentaires']); ?></div>
+                                                <?php endif; ?>
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <div class="contact-cell">
+                                                <?php if (!empty($mission['tel_fixe'])): ?>
+                                                    📞 <?php echo formatPhone($mission['tel_fixe']); ?><br>
+                                                <?php endif; ?>
+                                                <?php if (!empty($mission['tel_portable'])): ?>
+                                                    📱 <?php echo formatPhone($mission['tel_portable']); ?>
+                                                <?php endif; ?>
+                                                <?php if (empty($mission['tel_fixe']) && empty($mission['tel_portable'])): ?>
+                                                    <span class="not-specified">Non renseigné</span>
+                                                <?php endif; ?>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                <?php endforeach; ?>
+                            </tbody>
+                        </table>
                     </div>
                 </div>
                 <?php $first = false; ?>
@@ -1101,6 +1388,15 @@ $totalMissions = array_sum(array_map('count', $missionsBySecteur));
                 <div class="form-group">
                     <label>Secteur concerné :</label>
                     <p style="color: #667eea; font-weight: bold; font-size: 16px;" id="modal-secteur-display"></p>
+                </div>
+
+                <div class="form-group">
+                    <label>📋 Sélectionner les missions à envoyer :</label>
+                    <div id="missions-container">
+                        <div class="loading-spinner">
+                            <p>⏳ Chargement des missions...</p>
+                        </div>
+                    </div>
                 </div>
 
                 <div class="form-group">
@@ -1169,6 +1465,9 @@ $totalMissions = array_sum(array_map('count', $missionsBySecteur));
             // Réinitialiser à "secteur uniquement"
             document.getElementById('secteur_only').checked = true;
             
+            // Charger les missions du secteur
+            loadMissions(secteur);
+            
             // Charger les bénévoles du secteur
             loadBenevoles(false);
             
@@ -1184,6 +1483,112 @@ $totalMissions = array_sum(array_map('count', $missionsBySecteur));
                 });
             });
         });
+
+        function loadMissions(secteur) {
+            const container = document.getElementById('missions-container');
+            container.innerHTML = '<div class="loading-spinner"><p>⏳ Chargement des missions...</p></div>';
+            
+            fetch('?get_missions=1&secteur=' + encodeURIComponent(secteur))
+                .then(response => response.json())
+                .then(data => {
+                    if (data.error) {
+                        container.innerHTML = '<div class="no-benevoles"><p>❌ Erreur: ' + data.error + '</p></div>';
+                        return;
+                    }
+                    
+                    if (data.length === 0) {
+                        container.innerHTML = '<div class="no-benevoles"><p>Aucune mission trouvée.</p></div>';
+                        return;
+                    }
+                    
+                    let html = '<div class="select-all-container">';
+                    html += '<span class="benevole-count">' + data.length + ' mission' + (data.length > 1 ? 's' : '') + ' disponible' + (data.length > 1 ? 's' : '') + '</span>';
+                    html += '<button type="button" class="select-all-btn" onclick="toggleSelectAllMissions()">✓ Tout sélectionner</button>';
+                    html += '</div>';
+                    html += '<div class="missions-list">';
+                    
+                    data.forEach((mission, index) => {
+                        const dateObj = new Date(mission.date_mission);
+                        const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+                        const dateFr = dateObj.toLocaleDateString('fr-FR', options);
+                        
+                        html += '<label class="mission-item">';
+                        html += '<div class="mission-checkbox-container">';
+                        html += '<input type="checkbox" name="missions[]" value="' + mission.id_mission + '">';
+                        html += '<div class="mission-content">';
+                        html += '<div class="mission-header">';
+                        html += '<div class="mission-date">📅 ' + dateFr.charAt(0).toUpperCase() + dateFr.slice(1) + '</div>';
+                        html += '</div>';
+                        html += '<div class="mission-aide-name">👤 ' + mission.aide_nom + '</div>';
+                        html += '<div class="mission-details">';
+                        html += '<strong>⏰ Heure:</strong> ' + (mission.heure_rdv ? mission.heure_rdv.substring(0, 5) : 'Non précisée') + '<br>';
+                        html += '<strong>📍 Départ:</strong> ' + mission.adresse + ', ' + mission.commune + '<br>';
+                        
+                        if (mission.adresse_destination || mission.commune_destination) {
+                            html += '<strong>🎯 Destination:</strong> ';
+                            if (mission.adresse_destination) html += mission.adresse_destination;
+                            if (mission.commune_destination) html += (mission.adresse_destination ? ', ' : '') + mission.commune_destination;
+                            html += '<br>';
+                        }
+                        
+                        if (mission.nature_intervention) {
+                            html += '<div class="mission-nature">📖 ' + mission.nature_intervention + '</div>';
+                        }
+                        
+                        // Ajouter les téléphones
+                        html += '<div style="margin-top: 8px; font-size: 12px; color: #666;">';
+                        html += '<strong>📞 Contact:</strong> ';
+                        let contacts = [];
+                        if (mission.tel_fixe) {
+                            contacts.push('Fixe: ' + mission.tel_fixe);
+                        }
+                        if (mission.tel_portable) {
+                            contacts.push('Mobile: ' + mission.tel_portable);
+                        }
+                        if (contacts.length > 0) {
+                            html += contacts.join(' | ');
+                        } else {
+                            html += 'Non renseigné';
+                        }
+                        html += '</div>';
+                        
+                        html += '</div>';
+                        html += '</div>';
+                        html += '</div>';
+                        html += '</label>';
+                    });
+                    
+                    html += '</div>';
+                    container.innerHTML = html;
+                    
+                    // Ajouter l'événement click sur les labels
+                    document.querySelectorAll('.mission-item').forEach(item => {
+                        item.addEventListener('click', function(e) {
+                            if (e.target.tagName !== 'INPUT') {
+                                const checkbox = this.querySelector('input[type="checkbox"]');
+                                checkbox.checked = !checkbox.checked;
+                            }
+                            this.classList.toggle('selected', this.querySelector('input[type="checkbox"]').checked);
+                        });
+                    });
+                })
+                .catch(error => {
+                    container.innerHTML = '<div class="no-benevoles"><p>❌ Erreur de chargement: ' + error + '</p></div>';
+                });
+        }
+
+        function toggleSelectAllMissions() {
+            const checkboxes = document.querySelectorAll('.missions-list input[type="checkbox"]');
+            const allChecked = Array.from(checkboxes).every(cb => cb.checked);
+            const btn = event.target;
+            
+            checkboxes.forEach(cb => {
+                cb.checked = !allChecked;
+                cb.closest('.mission-item').classList.toggle('selected', !allChecked);
+            });
+            
+            btn.textContent = allChecked ? '✓ Tout sélectionner' : '✗ Tout désélectionner';
+        }
 
         function loadBenevoles(loadAll) {
             const container = document.getElementById('benevoles-container');
@@ -1252,15 +1657,22 @@ $totalMissions = array_sum(array_map('count', $missionsBySecteur));
 
         // Validation avant envoi
         document.getElementById('emailForm').addEventListener('submit', function(e) {
-            const checkedBoxes = document.querySelectorAll('.benevoles-list input[type="checkbox"]:checked');
+            const checkedMissions = document.querySelectorAll('.missions-list input[type="checkbox"]:checked');
+            const checkedBenevoles = document.querySelectorAll('.benevoles-list input[type="checkbox"]:checked');
             
-            if (checkedBoxes.length === 0) {
+            if (checkedMissions.length === 0) {
+                e.preventDefault();
+                alert('⚠️ Veuillez sélectionner au moins une mission à envoyer.');
+                return false;
+            }
+            
+            if (checkedBenevoles.length === 0) {
                 e.preventDefault();
                 alert('⚠️ Veuillez sélectionner au moins un bénévole destinataire.');
                 return false;
             }
             
-            const confirmMsg = `📧 Confirmer l'envoi des missions par email à ${checkedBoxes.length} bénévole${checkedBoxes.length > 1 ? 's' : ''} ?`;
+            const confirmMsg = `📧 Confirmer l'envoi de ${checkedMissions.length} mission${checkedMissions.length > 1 ? 's' : ''} à ${checkedBenevoles.length} bénévole${checkedBenevoles.length > 1 ? 's' : ''} ?`;
             if (!confirm(confirmMsg)) {
                 e.preventDefault();
                 return false;

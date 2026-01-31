@@ -193,29 +193,21 @@ verifierRole(['admin']);
                 <div class="arrow">→</div>
             </a>
 
-            <a href="profils.php" class="admin-link">
-                <div class="icon">👥</div>
-                <div class="text">
-                    <div class="title">Gestion des Profils</div>
-                    <div class="description">Gérer les utilisateurs et leurs rôles</div>
-                </div>
-                <div class="arrow">→</div>
-            </a>
-
-            <a href="cleanup_sessions.php" class="admin-link">
-                <div class="icon">🧹</div>
-                <div class="text">
-                    <div class="title">Nettoyage Sessions</div>
-                    <div class="description">Nettoyer les sessions zombies expirées</div>
-                </div>
-                <div class="arrow">→</div>
-            </a>
 
             <a href="logs_connexions.php" class="admin-link">
                 <div class="icon">📋</div>
                 <div class="text">
                     <div class="title">Logs de Connexions</div>
                     <div class="description">Historique des connexions utilisateurs</div>
+                </div>
+                <div class="arrow">→</div>
+            </a>
+						
+            <a href="cleanup_sessions.php" class="admin-link">
+                <div class="icon">🧹</div>
+                <div class="text">
+                    <div class="title">Nettoyage Sessions</div>
+                    <div class="description">Nettoyer les sessions zombies expirées</div>
                 </div>
                 <div class="arrow">→</div>
             </a>
