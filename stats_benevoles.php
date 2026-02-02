@@ -478,6 +478,9 @@ function formaterDuree($duree) {
 
                 <div class="filter-group" style="justify-content: flex-end;">
                     <label>&nbsp;</label>
+                    <button type="button" class="btn btn-primary" onclick="exporterCSV()">
+                        📊 Exporter CSV
+                    </button>
                     <button type="button" class="btn btn-secondary" onclick="window.print()">
                         🖨️ Imprimer
                     </button>
@@ -620,5 +623,19 @@ function formaterDuree($duree) {
             <?php endif; ?>
         </div>
     </div>
+
+    <script>
+        function exporterCSV() {
+            const annee = document.getElementById('annee').value;
+            const benevole = document.getElementById('benevole').value;
+            
+            let url = 'export_stats_benevoles_csv.php?annee=' + annee;
+            if (benevole) {
+                url += '&benevole=' + encodeURIComponent(benevole);
+            }
+            
+            window.location.href = url;
+        }
+    </script>
 </body>
 </html>

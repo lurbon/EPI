@@ -133,7 +133,7 @@ if (isset($_GET['id'])) {
 // Calculer le premier jour du mois courant
 $premierJourMoisCourant = date('Y-m-01');
 
-// Récupérer les missions pour le filtre avec recherche (uniquement mois courant et futurs)
+// Récupérer TOUTES les missions pour le filtre avec recherche (AUCUNE RESTRICTION DE DATE)
 $missions = [];
 $searchTerm = isset($_GET['search']) ? $_GET['search'] : '';
 
@@ -141,24 +141,21 @@ try {
     if ($searchTerm) {
         $stmt = $conn->prepare("SELECT id_mission, date_mission, aide 
                                FROM EPI_mission 
-                               WHERE date_mission >= :date_limite 
-                               AND aide LIKE :search 
-                               ORDER BY date_mission DESC LIMIT 100");
+                               WHERE aide LIKE :search 
+                               ORDER BY date_mission DESC LIMIT 200");
         $stmt->execute([
-            ':date_limite' => $premierJourMoisCourant,
             ':search' => "%$searchTerm%"
         ]);
     } else {
-        $stmt = $conn->prepare("SELECT id_mission, date_mission, aide 
-                               FROM EPI_mission 
-                               WHERE date_mission >= :date_limite 
-                               ORDER BY date_mission DESC LIMIT 100");
-        $stmt->execute([':date_limite' => $premierJourMoisCourant]);
+        // Récupérer toutes les missions, triées par date décroissante
+        $stmt = $conn->query("SELECT id_mission, date_mission, aide 
+                             FROM EPI_mission 
+                             ORDER BY date_mission DESC LIMIT 200");
     }
     $missions = $stmt->fetchAll(PDO::FETCH_ASSOC);
 } catch(PDOException $e) {}
 
-// Traitement de la suppression
+// Traitement de la suppression (SANS RESTRICTION DE DATE)
 if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['action']) && $_POST['action'] == 'delete' && isset($_POST['id_mission'])) {
     try {
         $stmt = $conn->prepare("SELECT date_mission, aide FROM EPI_mission WHERE id_mission = :id");
@@ -171,11 +168,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['action']) && $_POST['a
             exit();
         }
         
-        if ($missionToDelete['date_mission'] < $premierJourMoisCourant) {
-            $errorMsg = urlencode("Cette mission ne peut pas être supprimée (date antérieure au mois courant)");
-            header("Location: " . $_SERVER['PHP_SELF'] . "?error=" . $errorMsg . "&id=" . $_POST['id_mission']);
-            exit();
-        }
+        // SUPPRESSION DE LA RESTRICTION DE DATE - toutes les missions peuvent être supprimées
         
         $stmt = $conn->prepare("DELETE FROM EPI_mission WHERE id_mission = :id");
         $stmt->execute([':id' => $_POST['id_mission']]);
@@ -190,23 +183,10 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['action']) && $_POST['a
     }
 }
 
-// Traitement de la modification
+// Traitement de la modification (SANS RESTRICTION DE DATE)
 if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['id_mission']) && (!isset($_POST['action']) || $_POST['action'] != 'delete')) {
-    try {
-        $stmt = $conn->prepare("SELECT date_mission FROM EPI_mission WHERE id_mission = :id");
-        $stmt->execute([':id' => $_POST['id_mission']]);
-        $missionDate = $stmt->fetch(PDO::FETCH_ASSOC);
-        
-        if (!$missionDate || $missionDate['date_mission'] < $premierJourMoisCourant) {
-            $errorMsg = urlencode("Cette mission ne peut pas être modifiée (date antérieure au mois courant)");
-            header("Location: " . $_SERVER['PHP_SELF'] . "?error=" . $errorMsg);
-            exit();
-        }
-    } catch(PDOException $e) {
-        $errorMsg = urlencode($e->getMessage());
-        header("Location: " . $_SERVER['PHP_SELF'] . "?error=" . $errorMsg);
-        exit();
-    }
+    
+    // SUPPRESSION DE LA VÉRIFICATION DE DATE - toutes les missions peuvent être modifiées
     
     try {
         // Calculer la durée
@@ -296,11 +276,8 @@ if (isset($_GET['id'])) {
         if (!$mission) {
             $message = "❌ Mission introuvable";
             $messageType = "error";
-        } elseif ($mission['date_mission'] < $premierJourMoisCourant) {
-            $message = "❌ Cette mission ne peut pas être modifiée (date antérieure au mois courant)";
-            $messageType = "error";
-            $mission = null;
         }
+        // SUPPRESSION DE LA RESTRICTION DE DATE - toutes les missions peuvent être chargées et modifiées
     } catch(PDOException $e) {
         $message = "❌ Erreur : " . $e->getMessage();
         $messageType = "error";
@@ -323,7 +300,7 @@ if (isset($_GET['success'])) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Modifier une Mission</title>
+    <title>Modifier Mission Historique - Entraide Plus Iroise</title>
     <style>
         * {
             margin: 0;
@@ -758,10 +735,10 @@ if (isset($_GET['success'])) {
     <a href="dashboard.php" class="back-link" title="Retour au tableau de bord">🏠</a>
 
     <div class="container">
-        <h1>✏️ Modifier une Mission</h1>
+        <h1>✏️ Modifier Mission Historique</h1>
 
-        <div class="info-notice">
-            ℹ️ Seules les missions du mois courant (à partir du <?php echo date('d/m/Y', strtotime($premierJourMoisCourant)); ?>) et des mois futurs peuvent être modifiées.
+        <div class="info-notice" style="background: #ffe6e6; border-left: 4px solid #dc3545; color: #721c24;">
+            ⚠️ <strong>MODE HISTORIQUE :</strong> Cette page permet de modifier TOUTES les missions, y compris les missions passées. À utiliser avec précaution ! Pour la modification normale (mois courant uniquement), utilisez <a href="modifier_mission.php" style="color: #0056b3; text-decoration: underline;">modifier_mission.php</a>.
         </div>
 
         <?php if($message): ?>
@@ -792,7 +769,7 @@ if (isset($_GET['success'])) {
             </select>
             <?php else: ?>
                 <p style="text-align: center; color: #666; margin-top: 15px;">
-                    Aucune mission trouvée pour le mois courant et les mois futurs.
+                    Aucune mission trouvée.
                 </p>
             <?php endif; ?>
         </div>
@@ -831,7 +808,6 @@ if (isset($_GET['success'])) {
                 <div class="form-group">
                     <label for="date_mission">Date de la mission *</label>
                     <input type="date" id="date_mission" name="date_mission" required 
-                           min="<?php echo $premierJourMoisCourant; ?>"
                            value="<?php echo $mission['date_mission']; ?>">
                 </div>
                 <div class="form-group">

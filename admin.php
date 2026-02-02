@@ -203,7 +203,7 @@ verifierRole(['admin']);
                 <div class="arrow">→</div>
             </a>
 						
-            <a href="cleanup_sessions.php" class="admin-link">
+            <a href="cleanup_sessions_now.php" class="admin-link">
                 <div class="icon">🧹</div>
                 <div class="text">
                     <div class="title">Nettoyage Sessions</div>

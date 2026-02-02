@@ -1,32 +1,57 @@
 <?php
 /**
- * Script CRON : Déconnecter les utilisateurs inactifs depuis 1 heure
- * VERSION ADAPTÉE POUR EXÉCUTION HORAIRE
+ * Script CRON : Déconnexion automatique optimisée
+ * VERSION OPTIMISÉE - Compatible avec le nouveau système de sessions
  * 
- * À exécuter toutes les heures via CRON :
- * 0 * * * * /usr/bin/php /chemin/vers/auto_disconnect_hourly.php
+ * À exécuter régulièrement via CRON (recommandé : toutes les 15 minutes) :
+ * */15 * * * * /usr/bin/php /chemin/vers/auto_disconnect.php
  * 
- * Principe :
- * - Cherche les connexions actives (date_deconnexion IS NULL)
- * - Dont la dernière activité (last_activity_db) remonte à plus d'1 heure
- * - Enregistre la déconnexion automatique
+ * OU toutes les heures (moins précis) :
+ * 0 * * * * /usr/bin/php /chemin/vers/auto_disconnect.php
  * 
- * IMPORTANT : Avec une exécution horaire, les déconnexions peuvent avoir
- * jusqu'à 1h59 de retard (ex: inactif à 10h01, déconnecté à 11h00)
+ * RÔLE DANS LE SYSTÈME :
+ * =====================
+ * Ce script complète login.php qui ferme automatiquement les anciennes sessions
+ * lors d'une nouvelle connexion. auto_disconnect.php gère les cas où l'utilisateur :
+ * - Ne se reconnecte jamais (session abandonnée)
+ * - Reste inactif trop longtemps
+ * 
+ * OPTIMISATIONS :
+ * ==============
+ * 1. Évite les doublons avec login.php en ne traitant que les sessions réellement inactives
+ * 2. Garde seulement la session la plus récente par utilisateur (au cas où login.php aurait raté)
+ * 3. Timeout configurable (par défaut 60 minutes)
+ * 4. Rapport détaillé avec distinction des cas
  */
 
 // Charger la configuration WordPress
 require_once(__DIR__ . '/wp-config.php');
 
-// Pour éviter que le script soit appelé directement via HTTP (sauf test manuel)
+// Protection : CLI ou test manuel
 if (php_sapi_name() !== 'cli' && !isset($_GET['manual_run'])) {
-    die('Ce script doit être exécuté via CRON ou CLI');
+    die('Ce script doit être exécuté via CRON ou CLI. Pour test manuel : ?manual_run=1');
 }
 
-// Configuration
-$INACTIVITY_TIMEOUT = 60; // 1 heure en minutes
+// CONFIGURATION
+$INACTIVITY_TIMEOUT = 60; // Délai d'inactivité en minutes (1 heure par défaut)
 
-echo "[" . date('Y-m-d H:i:s') . "] Démarrage de la déconnexion automatique (exécution horaire)...\n";
+// Détection mode CLI vs HTTP
+$isCLI = php_sapi_name() === 'cli';
+$nl = $isCLI ? "\n" : "<br>\n";
+
+// Fonction d'affichage compatible CLI et HTTP
+function output($message, $nl) {
+    echo $message . $nl;
+    if (!$GLOBALS['isCLI']) {
+        flush();
+    }
+}
+
+output("=================================================", $nl);
+output("  DÉCONNEXION AUTOMATIQUE OPTIMISÉE", $nl);
+output("=================================================", $nl);
+output("[" . date('Y-m-d H:i:s') . "] Démarrage...", $nl);
+output("", $nl);
 
 try {
     $pdo = new PDO(
@@ -36,15 +61,84 @@ try {
         [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]
     );
     
-    // Trouver les sessions inactives depuis 1 heure
-    // Note : avec un CRON horaire, on peut avoir des sessions inactives jusqu'à 1h59
-    $stmt = $pdo->prepare("
+    // ÉTAPE 1 : Détecter et nettoyer les sessions multiples (sécurité supplémentaire)
+    output("📊 Vérification des sessions multiples...", $nl);
+    
+    $stmtMultiples = $pdo->query("
+        SELECT 
+            user_id,
+            username,
+            COUNT(*) as nb_sessions
+        FROM connexions_log
+        WHERE date_deconnexion IS NULL
+        AND statut = 'success'
+        GROUP BY user_id, username
+        HAVING COUNT(*) > 1
+    ");
+    $multiplesUsers = $stmtMultiples->fetchAll(PDO::FETCH_ASSOC);
+    
+    $sessionsMultiplesClosed = 0;
+    if (count($multiplesUsers) > 0) {
+        output("⚠️  Trouvé " . count($multiplesUsers) . " utilisateur(s) avec sessions multiples (pas fermées par login.php)", $nl);
+        
+        foreach ($multiplesUsers as $user) {
+            // Garder la plus récente, fermer les autres
+            $stmtGetSessions = $pdo->prepare("
+                SELECT 
+                    id,
+                    date_connexion,
+                    last_activity_db,
+                    TIMESTAMPDIFF(SECOND, date_connexion, NOW()) as duree_seconds
+                FROM connexions_log
+                WHERE user_id = ?
+                AND date_deconnexion IS NULL
+                AND statut = 'success'
+                ORDER BY COALESCE(last_activity_db, date_connexion) DESC
+            ");
+            $stmtGetSessions->execute([$user['user_id']]);
+            $sessions = $stmtGetSessions->fetchAll(PDO::FETCH_ASSOC);
+            
+            // Garder la première (plus récente), fermer les autres
+            $kept = array_shift($sessions);
+            
+            if (count($sessions) > 0) {
+                $stmtCloseMultiple = $pdo->prepare("
+                    UPDATE connexions_log 
+                    SET date_deconnexion = NOW(),
+                        duree_session = ?,
+                        message = CONCAT(
+                            COALESCE(message, 'Connexion réussie'), 
+                            ' [Déconnexion auto - session multiple détectée par auto_disconnect]'
+                        )
+                    WHERE id = ?
+                ");
+                
+                foreach ($sessions as $session) {
+                    $stmtCloseMultiple->execute([$session['duree_seconds'], $session['id']]);
+                    $sessionsMultiplesClosed++;
+                }
+                
+                output("   → " . $user['username'] . " : " . count($sessions) . " session(s) dupliquée(s) fermée(s)", $nl);
+            }
+        }
+        
+        output("✓ " . $sessionsMultiplesClosed . " session(s) dupliquée(s) fermée(s)", $nl);
+    } else {
+        output("✓ Aucune session multiple détectée", $nl);
+    }
+    output("", $nl);
+    
+    // ÉTAPE 2 : Fermer les sessions inactives
+    output("⏱️  Recherche des sessions inactives (>" . $INACTIVITY_TIMEOUT . " min)...", $nl);
+    
+    $stmtInactives = $pdo->prepare("
         SELECT 
             id,
             username,
             user_id,
             date_connexion,
             last_activity_db,
+            ip_address,
             TIMESTAMPDIFF(MINUTE, COALESCE(last_activity_db, date_connexion), NOW()) as minutes_inactivite,
             TIMESTAMPDIFF(SECOND, date_connexion, NOW()) as duree_session
         FROM connexions_log
@@ -53,50 +147,63 @@ try {
         AND TIMESTAMPDIFF(MINUTE, COALESCE(last_activity_db, date_connexion), NOW()) >= ?
         ORDER BY minutes_inactivite DESC
     ");
-    $stmt->execute([$INACTIVITY_TIMEOUT]);
-    $sessionsInactives = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    $stmtInactives->execute([$INACTIVITY_TIMEOUT]);
+    $sessionsInactives = $stmtInactives->fetchAll(PDO::FETCH_ASSOC);
     
-    $count = count($sessionsInactives);
-    echo "Trouvé $count session(s) inactive(s) depuis plus de $INACTIVITY_TIMEOUT minutes\n";
+    $countInactives = count($sessionsInactives);
     
-    if ($count > 0) {
-        // Déconnecter chaque session inactive
-        $stmtUpdate = $pdo->prepare("
+    if ($countInactives > 0) {
+        output("⚠️  Trouvé " . $countInactives . " session(s) inactive(s)", $nl);
+        
+        $stmtCloseInactive = $pdo->prepare("
             UPDATE connexions_log 
             SET date_deconnexion = NOW(),
                 duree_session = ?,
                 message = CONCAT(
                     COALESCE(message, 'Connexion réussie'), 
-                    ' [Déconnexion automatique après ', ?, ' minutes d\\'inactivité en base de données]'
+                    ' [Déconnexion auto après ', ?, ' min d\\'inactivité]'
                 )
             WHERE id = ?
         ");
         
         foreach ($sessionsInactives as $session) {
-            $stmtUpdate->execute([
+            $stmtCloseInactive->execute([
                 $session['duree_session'],
                 $session['minutes_inactivite'],
                 $session['id']
             ]);
             
-            echo sprintf(
-                "  → Session #%d (%s) déconnectée - %d min d'inactivité (dernière activité: %s)\n",
+            output(sprintf(
+                "   → Session #%d (%s) - %d min d'inactivité - IP: %s",
                 $session['id'],
                 $session['username'],
                 $session['minutes_inactivite'],
-                $session['last_activity_db'] ?? 'jamais'
-            );
+                $session['ip_address']
+            ), $nl);
         }
         
-        echo "✓ $count session(s) déconnectée(s) avec succès\n";
+        output("✓ " . $countInactives . " session(s) inactive(s) fermée(s)", $nl);
     } else {
-        echo "✓ Aucune session inactive à déconnecter\n";
+        output("✓ Aucune session inactive à fermer", $nl);
     }
+    output("", $nl);
     
-    // Statistiques
-    echo "\n--- Statistiques ---\n";
+    // ÉTAPE 3 : Statistiques finales
+    output("=================================================", $nl);
+    output("  RAPPORT FINAL", $nl);
+    output("=================================================", $nl);
+    
+    $totalFermes = $sessionsMultiplesClosed + $countInactives;
+    output("Sessions fermées ce tour :", $nl);
+    output("  - Sessions multiples : " . $sessionsMultiplesClosed, $nl);
+    output("  - Sessions inactives : " . $countInactives, $nl);
+    output("  - TOTAL : " . $totalFermes, $nl);
+    output("", $nl);
+    
+    // État actuel du système
     $stmtStats = $pdo->query("
         SELECT 
+            COUNT(DISTINCT user_id) as nb_users_actifs,
             COUNT(*) as sessions_actives,
             MIN(TIMESTAMPDIFF(MINUTE, COALESCE(last_activity_db, date_connexion), NOW())) as min_inactivite,
             MAX(TIMESTAMPDIFF(MINUTE, COALESCE(last_activity_db, date_connexion), NOW())) as max_inactivite,
@@ -107,28 +214,52 @@ try {
     ");
     $stats = $stmtStats->fetch(PDO::FETCH_ASSOC);
     
-    echo sprintf(
-        "Sessions actives : %d\n",
-        $stats['sessions_actives']
-    );
+    output("État actuel du système :", $nl);
+    output("  - Utilisateurs connectés : " . $stats['nb_users_actifs'], $nl);
+    output("  - Sessions actives totales : " . $stats['sessions_actives'], $nl);
     
     if ($stats['sessions_actives'] > 0) {
-        echo sprintf(
-            "Inactivité min/max/moyenne : %d / %d / %d minutes\n",
-            $stats['min_inactivite'],
-            $stats['max_inactivite'],
-            round($stats['avg_inactivite'])
-        );
+        output("  - Inactivité min/max/moy : " . 
+               $stats['min_inactivite'] . " / " . 
+               $stats['max_inactivite'] . " / " . 
+               round($stats['avg_inactivite']) . " minutes", $nl);
+    }
+    output("", $nl);
+    
+    // Vérifier s'il reste des problèmes
+    $stmtCheck = $pdo->query("
+        SELECT COUNT(*) as nb_problemes
+        FROM (
+            SELECT user_id
+            FROM connexions_log
+            WHERE date_deconnexion IS NULL
+            AND statut = 'success'
+            GROUP BY user_id
+            HAVING COUNT(*) > 1
+        ) as check_multiples
+    ");
+    $checkResult = $stmtCheck->fetch(PDO::FETCH_ASSOC);
+    
+    if ($checkResult['nb_problemes'] > 0) {
+        output("⚠️  ATTENTION : " . $checkResult['nb_problemes'] . " utilisateur(s) ont encore des sessions multiples", $nl);
+        output("   Relancez le script ou vérifiez login.php", $nl);
+    } else {
+        output("✅ Système sain : aucune session multiple détectée", $nl);
     }
     
-    echo "\nNote : Avec un CRON horaire, les déconnexions peuvent avoir jusqu'à 1h59 de retard.\n";
-    echo "Pour plus de précision, envisagez un CRON toutes les 5 ou 15 minutes.\n";
+    // Logger dans les fichiers système
+    if ($totalFermes > 0) {
+        error_log("auto_disconnect: $totalFermes sessions fermées (multiples: $sessionsMultiplesClosed, inactives: $countInactives)");
+    }
     
 } catch (PDOException $e) {
-    echo "✗ Erreur: " . $e->getMessage() . "\n";
-    error_log("Erreur auto_disconnect_hourly: " . $e->getMessage());
+    output("❌ Erreur : " . $e->getMessage(), $nl);
+    error_log("Erreur auto_disconnect: " . $e->getMessage());
     exit(1);
 }
 
-echo "[" . date('Y-m-d H:i:s') . "] Terminé\n\n";
+output("", $nl);
+output("[" . date('Y-m-d H:i:s') . "] Terminé", $nl);
+output("=================================================", $nl);
+
 exit(0);

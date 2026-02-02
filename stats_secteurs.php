@@ -994,7 +994,7 @@ function formaterDuree($duree) {
         const annee = <?php echo $annee; ?>;
         const secteur = '<?php echo addslashes($secteurFiltre); ?>';
         // Utiliser le chemin relatif WordPress
-        window.location.href = '<?php echo get_site_url(); ?>/export_stats_secteurs.php?annee=' + annee + '&secteur=' + encodeURIComponent(secteur);
+        window.location.href = '<?php echo get_site_url(); ?>/export_stats_secteurs_csv.php?annee=' + annee + '&secteur=' + encodeURIComponent(secteur);
     }
     </script>
 </body>

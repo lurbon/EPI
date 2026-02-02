@@ -352,6 +352,79 @@ if (!$utilisateur || !$token) {
         .info-box.warning h3 {
             color: #e65100;
         }
+
+        /* Sélecteur de thème discret */
+        .theme-selector {
+            position: relative;
+            display: inline-block;
+        }
+
+        .theme-button {
+            background: transparent;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            padding: 5px 8px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .theme-button:hover {
+            border-color: #667eea;
+            background: rgba(102, 126, 234, 0.05);
+        }
+
+        .theme-dropdown {
+            display: none;
+            position: absolute;
+            top: 100%;
+            right: 0;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            margin-top: 5px;
+            z-index: 1000;
+            min-width: 180px;
+            overflow: hidden;
+        }
+
+        .theme-dropdown.show {
+            display: block;
+        }
+
+        .theme-option {
+            padding: 10px 15px;
+            cursor: pointer;
+            transition: background 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 13px;
+        }
+
+        .theme-option:hover {
+            background: #f5f5f5;
+        }
+
+        .theme-preview {
+            width: 30px;
+            height: 20px;
+            border-radius: 4px;
+            border: 1px solid #ddd;
+        }
+
+        .theme-name {
+            flex: 1;
+            font-weight: 500;
+        }
+
+        .theme-check {
+            color: #667eea;
+            font-size: 16px;
+        }
     </style>
 </head>
 <body>
@@ -361,12 +434,48 @@ if (!$utilisateur || !$token) {
             <div class="user-info">
                 <span>👤 <span class="user-name" id="userName"></span></span>
                 <span class="user-role" id="userRole"></span>
-			
-
             </div>
 			<div style="display: flex; gap: 10px; align-items: center;">
-						  <a href="img/photo.jpg" title="Voir le monstre">
-				<img src="img/cam.jpg" width="60" height="60" alt="" ></a>
+                <!-- Sélecteur de thème discret -->
+                <div class="theme-selector">
+                    <button class="theme-button" id="themeButton" title="Changer de thème">
+                        🎨
+                    </button>
+                    <div class="theme-dropdown" id="themeDropdown">
+                        <div class="theme-option" onclick="changeTheme('purple')">
+                            <div class="theme-preview" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);"></div>
+                            <span class="theme-name">Violet</span>
+                            <span class="theme-check" id="check-purple">✓</span>
+                        </div>
+                        <div class="theme-option" onclick="changeTheme('blue')">
+                            <div class="theme-preview" style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);"></div>
+                            <span class="theme-name">Bleu</span>
+                            <span class="theme-check" id="check-blue" style="display: none;">✓</span>
+                        </div>
+                        <div class="theme-option" onclick="changeTheme('green')">
+                            <div class="theme-preview" style="background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);"></div>
+                            <span class="theme-name">Vert</span>
+                            <span class="theme-check" id="check-green" style="display: none;">✓</span>
+                        </div>
+                        <div class="theme-option" onclick="changeTheme('orange')">
+                            <div class="theme-preview" style="background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);"></div>
+                            <span class="theme-name">Orange</span>
+                            <span class="theme-check" id="check-orange" style="display: none;">✓</span>
+                        </div>
+                        <div class="theme-option" onclick="changeTheme('red')">
+                            <div class="theme-preview" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);"></div>
+                            <span class="theme-name">Rose</span>
+                            <span class="theme-check" id="check-red" style="display: none;">✓</span>
+                        </div>
+                        <div class="theme-option" onclick="changeTheme('dark')">
+                            <div class="theme-preview" style="background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);"></div>
+                            <span class="theme-name">Sombre</span>
+                            <span class="theme-check" id="check-dark" style="display: none;">✓</span>
+                        </div>
+                    </div>
+                </div>
+                <a href="img/photo.jpg" title="Voir le monstre">
+					<img src="img/cam.jpg" width="60" height="60" alt="" ></a>
 				<a href="change_password.php" class="btn-change-password">🔑 Changer mot de passe</a>
 				<button class="btn-logout" id="logout">🚪 Déconnexion</button>
 			</div>
@@ -697,6 +806,118 @@ if (!$utilisateur || !$token) {
 
         // Lancement
         loadDashboard();
+
+        // Gestion du sélecteur de thème
+        const themeButton = document.getElementById('themeButton');
+        const themeDropdown = document.getElementById('themeDropdown');
+
+        // Toggle dropdown
+        themeButton.addEventListener('click', (e) => {
+            e.stopPropagation();
+            themeDropdown.classList.toggle('show');
+        });
+
+        // Fermer le dropdown si on clique ailleurs
+        document.addEventListener('click', () => {
+            themeDropdown.classList.remove('show');
+        });
+
+        // Empêcher la fermeture si on clique dans le dropdown
+        themeDropdown.addEventListener('click', (e) => {
+            e.stopPropagation();
+        });
+
+        // Définition des thèmes
+        const themes = {
+            purple: {
+                gradient: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                primary: '#667eea',
+                secondary: '#764ba2'
+            },
+            blue: {
+                gradient: 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)',
+                primary: '#4facfe',
+                secondary: '#00f2fe'
+            },
+            green: {
+                gradient: 'linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)',
+                primary: '#43e97b',
+                secondary: '#38f9d7'
+            },
+            orange: {
+                gradient: 'linear-gradient(135deg, #fa709a 0%, #fee140 100%)',
+                primary: '#fa709a',
+                secondary: '#fee140'
+            },
+            red: {
+                gradient: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)',
+                primary: '#f093fb',
+                secondary: '#f5576c'
+            },
+            dark: {
+                gradient: 'linear-gradient(135deg, #2c3e50 0%, #34495e 100%)',
+                primary: '#2c3e50',
+                secondary: '#34495e'
+            }
+        };
+
+        // Fonction pour changer le thème
+        function changeTheme(themeName) {
+            const theme = themes[themeName];
+            
+            // Sauvegarder le thème dans localStorage
+            localStorage.setItem('dashboardTheme', themeName);
+            
+            // Appliquer le thème
+            document.body.style.background = theme.gradient;
+            
+            // Mettre à jour toutes les cartes du menu
+            document.querySelectorAll('.menu-card').forEach(card => {
+                card.style.background = theme.gradient;
+            });
+            
+            // Mettre à jour les titres et éléments colorés
+            document.querySelectorAll('h1, .user-name').forEach(el => {
+                el.style.color = theme.primary;
+            });
+            
+            // Mettre à jour tous les éléments avec la couleur primaire
+            document.querySelectorAll('[style*="667eea"]').forEach(el => {
+                const style = el.getAttribute('style');
+                if (style) {
+                    el.setAttribute('style', style.replace(/#667eea/g, theme.primary));
+                }
+            });
+            
+            // Mettre à jour le spinner
+            const spinner = document.querySelector('.spinner');
+            if (spinner) {
+                spinner.style.borderTopColor = theme.primary;
+            }
+            
+            // Mettre à jour les checkmarks
+            Object.keys(themes).forEach(t => {
+                const check = document.getElementById(`check-${t}`);
+                if (check) {
+                    check.style.display = t === themeName ? 'inline' : 'none';
+                }
+            });
+            
+            // Fermer le dropdown
+            themeDropdown.classList.remove('show');
+        }
+
+        // Charger le thème sauvegardé au démarrage
+        const savedTheme = localStorage.getItem('dashboardTheme');
+        if (savedTheme && themes[savedTheme]) {
+            // Petit délai pour s'assurer que tout est chargé
+            setTimeout(() => {
+                changeTheme(savedTheme);
+            }, 100);
+        }
+
+        // Rendre la fonction changeTheme globale
+        window.changeTheme = changeTheme;
     </script>
 	
 </body>

@@ -18,7 +18,7 @@
 // Ces paramètres protègent contre le vol de session et les attaques XSS
 ini_set('session.cookie_httponly', 1);    // Cookie non accessible via JavaScript (protection XSS)
 ini_set('session.cookie_secure', 1);      // Cookie transmis uniquement via HTTPS
-ini_set('session.cookie_samesite', 'Strict'); // Protection CSRF au niveau cookie
+ini_set('session.cookie_samesite', 'Lax'); // Protection CSRF - Lax pour compatibilité navigation (Strict était trop restrictif)
 ini_set('session.use_strict_mode', 1);    // Refuse les ID de session non initialisés
 ini_set('session.use_only_cookies', 1);   // Pas d'ID de session dans l'URL
 

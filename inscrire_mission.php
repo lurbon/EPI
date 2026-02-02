@@ -47,12 +47,16 @@ function formatPhone($phone) {
 $missionId = isset($_GET['mission']) ? intval($_GET['mission']) : 0;
 $email = isset($_GET['email']) ? $_GET['email'] : '';
 $token = isset($_GET['token']) ? $_GET['token'] : '';
-$confirmed = isset($_GET['confirmed']) ? $_GET['confirmed'] : '0'; // Nouveau paramètre pour vérifier la confirmation
+$confirmed = isset($_GET['confirmed']) ? $_GET['confirmed'] : '0';
+$emetteurEmail = isset($_GET['emetteur']) ? $_GET['emetteur'] : '';
+$selectedBenevoleId = isset($_GET['benevole_id']) ? intval($_GET['benevole_id']) : 0; // NOUVEAU : ID du bénévole choisi
 
 $status = '';
 $message = '';
 $missionDetails = null;
-$showConfirmation = false; // Flag pour afficher la popup
+$showConfirmation = false;
+$showBenevoleChoice = false; // NOUVEAU : Flag pour afficher le choix de bénévole
+$benevoles = []; // NOUVEAU : Liste des bénévoles avec le même email
 
 // Vérifier que tous les paramètres sont présents
 if ($missionId && $email && $token) {
@@ -64,8 +68,8 @@ if ($missionId && $email && $token) {
         $message = 'Lien invalide ou expiré. Veuillez contacter l\'administrateur.';
     } else {
         try {
-            // Récupérer TOUTES les informations du bénévole
-            $sqlBenevole = "SELECT 
+            // Récupérer TOUS les bénévoles avec cet email (sans LIMIT)
+            $sqlBenevoles = "SELECT 
                                 id_benevole, 
                                 nom, 
                                 adresse, 
@@ -73,17 +77,22 @@ if ($missionId && $email && $token) {
                                 commune,
                                 secteur
                             FROM EPI_benevole 
-                            WHERE courriel = :email 
-                            LIMIT 1";
-            $stmtBenevole = $conn->prepare($sqlBenevole);
-            $stmtBenevole->execute(['email' => $email]);
-            $benevole = $stmtBenevole->fetch(PDO::FETCH_ASSOC);
+                            WHERE courriel = :email
+                            ORDER BY nom";
+            $stmtBenevoles = $conn->prepare($sqlBenevoles);
+            $stmtBenevoles->execute(['email' => $email]);
+            $benevoles = $stmtBenevoles->fetchAll(PDO::FETCH_ASSOC);
             
-            if (!$benevole) {
+            if (count($benevoles) === 0) {
                 $status = 'error';
                 $message = 'Bénévole non trouvé. Votre email n\'est peut-être pas enregistré dans notre système.';
-            } else {
-                // Vérifier que la mission existe et est toujours disponible
+            } elseif (count($benevoles) > 1 && $selectedBenevoleId === 0) {
+                // NOUVEAU : Plusieurs bénévoles avec le même email et aucun n'a été sélectionné
+                $showBenevoleChoice = true;
+                $status = 'choose_benevole';
+                $message = 'Plusieurs profils sont associés à cet email. Veuillez sélectionner votre nom :';
+                
+                // Récupérer les détails de la mission pour affichage
                 $sqlMission = "SELECT 
                                     m.id_mission,
                                     m.date_mission,
@@ -108,152 +117,253 @@ if ($missionId && $email && $token) {
                 
                 $stmtMission = $conn->prepare($sqlMission);
                 $stmtMission->execute(['mission_id' => $missionId]);
-                $mission = $stmtMission->fetch(PDO::FETCH_ASSOC);
-                
-                if (!$mission) {
-                    $status = 'error';
-                    $message = 'Mission non trouvée.';
-                } elseif ($mission['id_benevole'] && $mission['id_benevole'] != 0) {
-                    // Mission déjà pourvue
-                    $status = 'warning';
-                    $message = 'Cette mission a déjà été attribuée à un autre bénévole.';
-                    $missionDetails = $mission;
+                $missionDetails = $stmtMission->fetch(PDO::FETCH_ASSOC);
+            } else {
+                // Un seul bénévole OU un bénévole a été sélectionné
+                if ($selectedBenevoleId > 0) {
+                    // Vérifier que l'ID sélectionné correspond bien à un des bénévoles avec cet email
+                    $benevole = null;
+                    foreach ($benevoles as $b) {
+                        if ($b['id_benevole'] == $selectedBenevoleId) {
+                            $benevole = $b;
+                            break;
+                        }
+                    }
+                    if (!$benevole) {
+                        $status = 'error';
+                        $message = 'Sélection invalide. Veuillez réessayer.';
+                    }
                 } else {
-                    // Mission disponible
-                    $missionDetails = $mission;
+                    // Un seul bénévole, on le prend directement
+                    $benevole = $benevoles[0];
+                }
+                
+                if (isset($benevole)) {
+                    // Vérifier que la mission existe et est toujours disponible
+                    $sqlMission = "SELECT 
+                                        m.id_mission,
+                                        m.date_mission,
+                                        m.heure_rdv,
+                                        m.nature_intervention,
+                                        m.adresse_destination,
+                                        m.cp_destination,
+                                        m.commune_destination,
+                                        m.commentaires,
+                                        m.id_benevole,
+                                        a.nom as aide_nom,
+                                        a.adresse as aide_adresse,
+                                        a.code_postal as aide_cp,
+                                        a.commune as aide_commune,
+                                        a.tel_fixe as aide_tel_fixe,
+                                        a.tel_portable as aide_tel_portable,
+                                        a.secteur as aide_secteur,
+                                        a.commentaires as aide_commentaires
+                                    FROM EPI_mission m
+                                    INNER JOIN EPI_aide a ON m.id_aide = a.id_aide
+                                    WHERE m.id_mission = :mission_id";
                     
-                    // Si pas encore confirmé, afficher la popup
-                    if ($confirmed !== '1') {
-                        $showConfirmation = true;
-                        $status = 'pending';
+                    $stmtMission = $conn->prepare($sqlMission);
+                    $stmtMission->execute(['mission_id' => $missionId]);
+                    $mission = $stmtMission->fetch(PDO::FETCH_ASSOC);
+                    
+                    if (!$mission) {
+                        $status = 'error';
+                        $message = 'Mission non trouvée.';
+                    } elseif ($mission['id_benevole'] && $mission['id_benevole'] != 0) {
+                        // Mission déjà pourvue
+                        $status = 'warning';
+                        $message = 'Cette mission a déjà été attribuée à un autre bénévole.';
+                        $missionDetails = $mission;
                     } else {
-                        // Confirmation reçue, on procède à l'inscription
-                        $nomComplet = $benevole['nom'];
+                        // Mission disponible
+                        $missionDetails = $mission;
                         
-                        $sqlUpdate = "UPDATE EPI_mission SET 
-                                        id_benevole = :benevole_id,
-                                        benevole = :benevole_nom,
-                                        adresse_benevole = :adresse_benevole,
-                                        cp_benevole = :cp_benevole,
-                                        commune_benevole = :commune_benevole,
-                                        secteur_benevole = :secteur_benevole,
-                                        email_inscript = :email_inscript,
-                                        date_inscript = NOW()
-                                      WHERE id_mission = :mission_id";
-                        
-                        $stmtUpdate = $conn->prepare($sqlUpdate);
-                        $stmtUpdate->execute([
-                            'benevole_id' => $benevole['id_benevole'],
-                            'benevole_nom' => $nomComplet,
-                            'adresse_benevole' => $benevole['adresse'] ?? '',
-                            'cp_benevole' => $benevole['code_postal'] ?? '',
-                            'commune_benevole' => $benevole['commune'] ?? '',
-                            'secteur_benevole' => $benevole['secteur'] ?? '',
-                            'email_inscript' => $email,
-                            'mission_id' => $missionId
-                        ]);
-                        
-                        $status = 'success';
-                        $message = 'Félicitations ! Vous avez été inscrit(e) avec succès à cette mission.';
-                        
-                        // Email de confirmation (code email inchangé...)
-                        $headers = "From: noreply@votre-association.fr\r\n";
-                        $headers .= "Content-Type: text/html; charset=UTF-8\r\n";
-                        
-                        $aideNomComplet = $mission['aide_nom'];
-                        
-                        $confirmationEmail = '<!DOCTYPE html>
+                        // Si pas encore confirmé, afficher la popup
+                        if ($confirmed !== '1') {
+                            $showConfirmation = true;
+                            $status = 'pending';
+                        } else {
+                            // Confirmation reçue, on procède à l'inscription
+                            $nomComplet = $benevole['nom'];
+                            
+                            $sqlUpdate = "UPDATE EPI_mission SET 
+                                            id_benevole = :benevole_id,
+                                            benevole = :benevole_nom,
+                                            adresse_benevole = :adresse_benevole,
+                                            cp_benevole = :cp_benevole,
+                                            commune_benevole = :commune_benevole,
+                                            secteur_benevole = :secteur_benevole,
+                                            email_inscript = :email_inscript,
+                                            date_inscript = NOW()
+                                          WHERE id_mission = :mission_id";
+                            
+                            $stmtUpdate = $conn->prepare($sqlUpdate);
+                            $stmtUpdate->execute([
+                                'benevole_id' => $benevole['id_benevole'],
+                                'benevole_nom' => $nomComplet,
+                                'adresse_benevole' => $benevole['adresse'] ?? '',
+                                'cp_benevole' => $benevole['code_postal'] ?? '',
+                                'commune_benevole' => $benevole['commune'] ?? '',
+                                'secteur_benevole' => $benevole['secteur'] ?? '',
+                                'email_inscript' => $email,
+                                'mission_id' => $missionId
+                            ]);
+                            
+                            $status = 'success';
+                            $message = 'Félicitations ! Vous avez été inscrit(e) avec succès à cette mission.';
+                            
+                            // Email de confirmation
+                            $domaine = $_SERVER['HTTP_HOST'];
+                            $headers = "From: Entraide Plus Iroise <noreply@{$domaine}>\r\n";
+                            $headers .= "Reply-To: Entraide Plus Iroise <contact@{$domaine}>\r\n";
+                            $headers .= "Content-Type: text/html; charset=UTF-8\r\n";
+                            
+                            $aideNomComplet = $mission['aide_nom'];
+                            
+                            $confirmationEmail = '<!DOCTYPE html>
 <html>
-<head><meta charset="UTF-8"><title>Confirmation</title></head>
-<body style="margin:0;padding:0;font-family:Arial,sans-serif;">
-<div style="background:#667eea;padding:40px 20px;">
-<div style="max-width:600px;margin:0 auto;background:white;border-radius:10px;overflow:hidden;">
-<div style="background:#28a745;color:white;padding:30px;text-align:center;">
-<h1 style="margin:0;font-size:36px;">✅</h1>
-<h2 style="margin:10px 0 0;">Inscription confirmée !</h2>
-</div>
-<div style="padding:30px;">
-<p>Bonjour ' . htmlspecialchars($nomComplet) . ',</p>
-<p>Votre inscription à la mission a bien été enregistrée.</p>
-<div style="background:#667eea;color:white;padding:15px;border-radius:8px;text-align:center;margin:20px 0;">
-<strong>👤 ' . htmlspecialchars($aideNomComplet) . '</strong>
-</div>
-<div style="background:#f8f9fa;padding:15px;border-radius:8px;margin:10px 0;">
-<strong style="color:#667eea;">📅 Date et heure</strong><br>
-' . formatDate($mission['date_mission']) . (!empty($mission['heure_rdv']) ? ' à ' . substr($mission['heure_rdv'], 0, 5) : '') . '
-</div>
-<div style="background:#f8f9fa;padding:15px;border-radius:8px;margin:10px 0;">
-<strong style="color:#667eea;">🏠 Adresse de départ</strong><br>
-' . htmlspecialchars($mission['aide_adresse']) . '<br>' . htmlspecialchars($mission['aide_cp']) . ' ' . htmlspecialchars($mission['aide_commune']) . '
-</div>';
-
-if (!empty($mission['aide_tel_fixe']) || !empty($mission['aide_tel_portable'])) {
-    $confirmationEmail .= '<div style="background:#f8f9fa;padding:15px;border-radius:8px;margin:10px 0;">
-<strong style="color:#667eea;">📞 Contact</strong><br>';
-    if (!empty($mission['aide_tel_fixe'])) {
-        $confirmationEmail .= 'Fixe: ' . formatPhone($mission['aide_tel_fixe']) . '<br>';
-    }
-    if (!empty($mission['aide_tel_portable'])) {
-        $confirmationEmail .= 'Mobile: ' . formatPhone($mission['aide_tel_portable']);
-    }
-    $confirmationEmail .= '</div>';
-}
-
-if (!empty($mission['aide_commentaires'])) {
-    $confirmationEmail .= '<div style="background:#e7f3ff;padding:15px;border-radius:8px;margin:10px 0;border-left:4px solid #2196F3;">
-<strong style="color:#2196F3;">ℹ️ Informations sur la personne</strong><br>
-' . nl2br(htmlspecialchars($mission['aide_commentaires'])) . '
-</div>';
-}
-
-if (!empty($mission['adresse_destination']) || !empty($mission['commune_destination'])) {
-    $confirmationEmail .= '<div style="background:#fff3cd;padding:15px;border-radius:8px;margin:10px 0;">
-<strong style="color:#856404;">🎯 Destination</strong><br>';
-    if (!empty($mission['adresse_destination'])) {
-        $confirmationEmail .= htmlspecialchars($mission['adresse_destination']) . '<br>';
-    }
-    if (!empty($mission['commune_destination'])) {
-        $confirmationEmail .= htmlspecialchars($mission['cp_destination']) . ' ' . htmlspecialchars($mission['commune_destination']);
-    }
-    $confirmationEmail .= '</div>';
-}
-
-if (!empty($mission['nature_intervention'])) {
-    $confirmationEmail .= '<div style="background:#f8f9fa;padding:15px;border-radius:8px;margin:10px 0;">
-<strong style="color:#667eea;">📖 Nature de l\'intervention</strong><br>
-' . htmlspecialchars($mission['nature_intervention']) . '
-</div>';
-}
-
-if (!empty($mission['commentaires'])) {
-    $confirmationEmail .= '<div style="background:#f8f9fa;padding:15px;border-radius:8px;margin:10px 0;">
-<strong style="color:#667eea;">💬 Commentaires</strong><br>
-' . nl2br(htmlspecialchars($mission['commentaires'])) . '
-</div>';
-}
-
-$confirmationEmail .= '<p style="margin-top:20px;">Merci pour votre engagement ! 🙏</p>
-</div>
-<div style="background:#f8f9fa;padding:20px;text-align:center;">
-<small style="color:#999;">Cet email a été envoyé automatiquement</small>
-</div>
-</div>
-</div>
+<head>
+    <meta charset="UTF-8">
+    <title>Confirmation d\'inscription</title>
+</head>
+<body style="margin: 0; padding: 0; font-family: Arial, sans-serif; background-color: #f4f4f4;">
+    <table border="0" cellpadding="0" cellspacing="0" width="100%">
+        <tr>
+            <td style="padding: 20px 0;">
+                <table align="center" border="0" cellpadding="0" cellspacing="0" width="600" style="border-collapse: collapse; background-color: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+                    <tr>
+                        <td style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 30px; text-align: center;">
+                            <h1 style="margin: 0; color: #ffffff; font-size: 24px;">✅ Votre inscription est confirmée</h1>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 30px;">
+                            <p style="margin: 0 0 20px 0; font-size: 16px; line-height: 1.6; color: #333;">
+                                Bonjour <strong>' . htmlspecialchars($nomComplet) . '</strong>,
+                            </p>
+                            <p style="margin: 0 0 20px 0; font-size: 16px; line-height: 1.6; color: #333;">
+                                Votre inscription à la mission suivante a bien été prise en compte :
+                            </p>
+                            
+                            <div style="background: #f8f9fa; border-left: 4px solid #667eea; padding: 20px; margin: 20px 0; border-radius: 4px;">
+                                <h3 style="margin: 0 0 15px 0; color: #667eea;">📋 Détails de la mission</h3>
+                                
+                                <p style="margin: 5px 0;"><strong>👤 Personne accompagnée :</strong> ' . htmlspecialchars($aideNomComplet) . '</p>
+                                <p style="margin: 5px 0;"><strong>📅 Date :</strong> ' . formatDate($mission['date_mission']) . '</p>
+                                <p style="margin: 5px 0;"><strong>⏰ Heure :</strong> ' . (!empty($mission['heure_rdv']) ? substr($mission['heure_rdv'], 0, 5) : 'Non précisée') . '</p>
+                                
+                                <p style="margin: 5px 0;"><strong>🏠 Adresse de départ :</strong><br>' . 
+                                    htmlspecialchars($mission['aide_adresse']) . '<br>' . 
+                                    htmlspecialchars($mission['aide_cp']) . ' ' . 
+                                    htmlspecialchars($mission['aide_commune']) . '</p>
+                                
+                                ' . (!empty($mission['adresse_destination']) || !empty($mission['commune_destination']) ? 
+                                    '<p style="margin: 5px 0;"><strong>🎯 Destination :</strong><br>' . 
+                                    (!empty($mission['adresse_destination']) ? htmlspecialchars($mission['adresse_destination']) . '<br>' : '') . 
+                                    (!empty($mission['commune_destination']) ? htmlspecialchars($mission['cp_destination']) . ' ' . htmlspecialchars($mission['commune_destination']) : '') . 
+                                    '</p>' : '') . '
+                                
+                                ' . (!empty($mission['nature_intervention']) ? 
+                                    '<p style="margin: 5px 0;"><strong>📖 Nature :</strong> ' . htmlspecialchars($mission['nature_intervention']) . '</p>' : '') . '
+                                
+                                <p style="margin: 5px 0;"><strong>📞 Contact :</strong><br>';
+                            
+                            if (!empty($mission['aide_tel_fixe'])) {
+                                $confirmationEmail .= 'Fixe : ' . formatPhone($mission['aide_tel_fixe']) . '<br>';
+                            }
+                            if (!empty($mission['aide_tel_portable'])) {
+                                $confirmationEmail .= 'Mobile : ' . formatPhone($mission['aide_tel_portable']);
+                            }
+                            
+                            $confirmationEmail .= '</p>';
+                            
+                            if (!empty($mission['aide_commentaires'])) {
+                                $confirmationEmail .= '<p style="margin: 15px 0 5px 0;"><strong>ℹ️ Informations :</strong><br>' . 
+                                    nl2br(htmlspecialchars($mission['aide_commentaires'])) . '</p>';
+                            }
+                            
+                            if (!empty($mission['commentaires'])) {
+                                $confirmationEmail .= '<p style="margin: 15px 0 5px 0;"><strong>💬 Commentaires :</strong><br>' . 
+                                    nl2br(htmlspecialchars($mission['commentaires'])) . '</p>';
+                            }
+                            
+                            $confirmationEmail .= '
+                            </div>
+                            
+                            <p style="margin: 25px 0 20px 0; font-size: 16px; line-height: 1.6; color: #dc3545; font-weight: bold; text-align: center;">
+                                ⚠️ Merci de bien vouloir contacter la personne accompagnée la veille ou l\'avant-veille de votre mission
+                            </p>
+                            
+                            <div style="background-color: #e9ecef; padding: 20px; border-radius: 8px; text-align: center; margin-top: 20px;">
+                                <p style="margin: 0; font-size: 16px; line-height: 1.6; color: #495057; font-weight: bold;">
+                                    Merci de votre engagement !<br>
+                                    <span style="font-size: 14px; font-weight: normal;">L\'équipe d\'Entraide Plus Iroise</span>
+                                </p>
+                            </div>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style="background-color: #f8f9fa; padding: 20px; text-align: center; font-size: 12px; color: #666;">
+                            <p style="margin: 0;">Cet email est envoyé automatiquement, merci de ne pas y répondre.</p>
+                        </td>
+                    </tr>
+                </table>
+            </td>
+        </tr>
+    </table>
 </body>
 </html>';
-                        
-                        mail($email, '✅ Confirmation d\'inscription à votre mission', $confirmationEmail, $headers);
+                            
+                            // Envoyer l'email de confirmation au bénévole
+                            mail($email, 'Confirmation d\'inscription à la mission', $confirmationEmail, $headers);
+                            
+                            // Email de notification à l'émetteur (si renseigné)
+                            if (!empty($emetteurEmail) && filter_var($emetteurEmail, FILTER_VALIDATE_EMAIL)) {
+                                $notificationEmail = '<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Inscription confirmée</title>
+</head>
+<body style="margin: 0; padding: 0; font-family: Arial, sans-serif; background-color: #f4f4f4;">
+    <table border="0" cellpadding="0" cellspacing="0" width="100%">
+        <tr>
+            <td style="padding: 20px 0;">
+                <table align="center" border="0" cellpadding="0" cellspacing="0" width="600" style="border-collapse: collapse; background-color: #ffffff; border-radius: 8px; overflow: hidden;">
+                    <tr>
+                        <td style="background: #28a745; padding: 30px; text-align: center;">
+                            <h1 style="margin: 0; color: #ffffff; font-size: 24px;">✅ Bénévole inscrit</h1>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 30px;">
+                            <p style="margin: 0 0 20px 0; font-size: 16px; line-height: 1.6;">
+                                <strong>' . htmlspecialchars($nomComplet) . '</strong> s\'est inscrit(e) à la mission du ' . 
+                                formatDate($mission['date_mission']) . ' avec ' . htmlspecialchars($aideNomComplet) . '.
+                            </p>
+                        </td>
+                    </tr>
+                </table>
+            </td>
+        </tr>
+    </table>
+</body>
+</html>';
+                                
+                                mail($emetteurEmail, 'Inscription confirmée - ' . $nomComplet, $notificationEmail, $headers);
+                            }
+                        }
                     }
                 }
             }
         } catch(PDOException $e) {
             $status = 'error';
-            $message = 'Une erreur est survenue : ' . $e->getMessage();
+            $message = 'Erreur technique : ' . $e->getMessage();
         }
     }
 } else {
     $status = 'error';
-    $message = 'Paramètres manquants dans le lien.';
+    $message = 'Paramètres manquants. Veuillez utiliser le lien fourni dans l\'email.';
 }
 ?>
 <!DOCTYPE html>
@@ -261,7 +371,7 @@ $confirmationEmail .= '<p style="margin-top:20px;">Merci pour votre engagement !
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Inscription à la mission</title>
+    <title>Inscription à une mission - Entraide Plus Iroise</title>
     <style>
         * {
             margin: 0;
@@ -281,84 +391,126 @@ $confirmationEmail .= '<p style="margin-top:20px;">Merci pour votre engagement !
 
         .container {
             background: white;
+            border-radius: 16px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
             max-width: 800px;
             width: 100%;
-            border-radius: 20px;
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
             overflow: hidden;
         }
 
         .header {
-            padding: 40px 30px;
-            text-align: center;
-            color: white;
-        }
-
-        .header.success {
-            background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
-        }
-
-        .header.warning {
-            background: linear-gradient(135deg, #ffc107 0%, #ff9800 100%);
-        }
-
-        .header.error {
-            background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
-        }
-
-        .header.pending {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
         }
 
         .header h1 {
-            font-size: 48px;
+            font-size: 28px;
             margin-bottom: 10px;
         }
 
-        .header h2 {
-            font-size: 24px;
-            font-weight: 500;
+        .header p {
+            font-size: 16px;
+            opacity: 0.95;
         }
 
         .content {
-            padding: 40px 30px;
+            padding: 30px;
         }
 
         .message {
-            background: #f8f9fa;
             padding: 20px;
             border-radius: 8px;
-            margin-bottom: 30px;
+            margin-bottom: 25px;
             font-size: 16px;
             line-height: 1.6;
+        }
+
+        .message.success {
+            background: #d4edda;
+            color: #155724;
+            border-left: 4px solid #28a745;
+        }
+
+        .message.warning {
+            background: #fff3cd;
+            color: #856404;
+            border-left: 4px solid #ffc107;
+        }
+
+        .message.error {
+            background: #f8d7da;
+            color: #721c24;
+            border-left: 4px solid #dc3545;
+        }
+
+        .message.info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border-left: 4px solid #17a2b8;
+        }
+
+        /* NOUVEAU : Styles pour le choix de bénévole */
+        .benevole-selection {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+
+        .benevole-option {
+            background: white;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 10px 0;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .benevole-option:hover {
+            border-color: #667eea;
+            transform: translateX(5px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.2);
+        }
+
+        .benevole-option input[type="radio"] {
+            width: 20px;
+            height: 20px;
+            cursor: pointer;
+        }
+
+        .benevole-info-select {
+            flex: 1;
+        }
+
+        .benevole-name-select {
+            font-size: 18px;
+            font-weight: bold;
             color: #333;
+            margin-bottom: 5px;
+        }
+
+        .benevole-details-select {
+            font-size: 14px;
+            color: #666;
         }
 
         .mission-details {
             background: #f8f9fa;
+            border-radius: 8px;
             padding: 25px;
-            border-radius: 12px;
-            margin-top: 20px;
+            margin: 20px 0;
         }
 
         .mission-details h3 {
             color: #667eea;
             margin-bottom: 20px;
             font-size: 22px;
-        }
-
-        .detail-item {
-            background: white;
-            padding: 15px;
-            border-radius: 8px;
-            margin-bottom: 15px;
-            border-left: 4px solid #667eea;
-        }
-
-        .detail-item strong {
-            display: block;
-            color: #667eea;
-            margin-bottom: 5px;
         }
 
         .aide-name {
@@ -369,50 +521,69 @@ $confirmationEmail .= '<p style="margin-top:20px;">Merci pour votre engagement !
             text-align: center;
             font-size: 20px;
             font-weight: bold;
-            margin: 20px 0;
+            margin-bottom: 20px;
+        }
+
+        .detail-item {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 12px;
+            border-left: 4px solid #667eea;
+        }
+
+        .detail-item strong {
+            color: #667eea;
+            display: block;
+            margin-bottom: 5px;
         }
 
         .aide-commentaires {
-            background: #e7f3ff;
-            border-left: 4px solid #2196F3;
+            background: #e8f4f8;
+            border-left-color: #17a2b8;
         }
 
         .btn-container {
-            text-align: center;
-            margin-top: 30px;
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            margin-top: 25px;
+            flex-wrap: wrap;
         }
 
         .btn {
-            display: inline-block;
-            padding: 15px 30px;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
-            text-decoration: none;
-            border-radius: 8px;
-            font-weight: 600;
-            transition: transform 0.3s ease;
-            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
             border: none;
+            padding: 15px 30px;
+            border-radius: 8px;
             font-size: 16px;
+            font-weight: bold;
             cursor: pointer;
-            margin: 0 10px;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-block;
         }
 
         .btn:hover {
             transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+            box-shadow: 0 8px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
         }
 
         .btn-secondary {
             background: #6c757d;
-            box-shadow: 0 4px 15px rgba(108, 117, 125, 0.3);
         }
 
         .btn-secondary:hover {
-            box-shadow: 0 6px 20px rgba(108, 117, 125, 0.4);
+            box-shadow: 0 8px 20px rgba(108, 117, 125, 0.4);
         }
 
-        /* Modal/Popup styles */
+        /* Modal styles */
         .modal {
             display: none;
             position: fixed;
@@ -421,69 +592,27 @@ $confirmationEmail .= '<p style="margin-top:20px;">Merci pour votre engagement !
             top: 0;
             width: 100%;
             height: 100%;
-            overflow: auto;
-            background-color: rgba(0, 0, 0, 0.6);
-            animation: fadeIn 0.3s;
+            background-color: rgba(0, 0, 0, 0.7);
+            opacity: 0;
+            transition: opacity 0.3s ease;
         }
 
         .modal.active {
             display: flex;
             align-items: center;
             justify-content: center;
+            opacity: 1;
         }
 
         .modal-content {
-            background-color: white;
-            margin: auto;
-            padding: 0;
-            border-radius: 20px;
+            background: white;
+            border-radius: 16px;
             max-width: 600px;
             width: 90%;
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-            animation: slideIn 0.3s;
-        }
-
-        .modal-header {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            padding: 30px;
-            border-radius: 20px 20px 0 0;
-            text-align: center;
-        }
-
-        .modal-header h2 {
-            font-size: 28px;
-            margin-top: 10px;
-        }
-
-        .modal-body {
-            padding: 30px;
-        }
-
-        .modal-footer {
-            padding: 20px 30px 30px;
-            text-align: center;
-        }
-
-        .confirmation-details {
-            background: #f8f9fa;
-            padding: 20px;
-            border-radius: 8px;
-            margin: 20px 0;
-        }
-
-        .confirmation-details p {
-            margin: 10px 0;
-            line-height: 1.6;
-        }
-
-        .confirmation-details strong {
-            color: #667eea;
-        }
-
-        @keyframes fadeIn {
-            from { opacity: 0; }
-            to { opacity: 1; }
+            max-height: 90vh;
+            overflow-y: auto;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+            animation: slideIn 0.3s ease;
         }
 
         @keyframes slideIn {
@@ -497,65 +626,142 @@ $confirmationEmail .= '<p style="margin-top:20px;">Merci pour votre engagement !
             }
         }
 
-        @media (max-width: 600px) {
-            .header h1 {
-                font-size: 36px;
-            }
+        .modal-header {
+            background: linear-gradient(135deg, #ffc107 0%, #ff9800 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
 
-            .header h2 {
-                font-size: 20px;
+        .modal-header h1 {
+            font-size: 48px;
+            margin-bottom: 10px;
+        }
+
+        .modal-header h2 {
+            font-size: 24px;
+            margin: 0;
+        }
+
+        .modal-body {
+            padding: 30px;
+        }
+
+        .confirmation-details {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+
+        .confirmation-details p {
+            margin: 10px 0;
+            font-size: 16px;
+        }
+
+        .modal-footer {
+            padding: 20px 30px 30px;
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+        }
+
+        @media (max-width: 768px) {
+            .header h1 {
+                font-size: 24px;
             }
 
             .content {
                 padding: 20px;
             }
 
-            .btn {
-                display: block;
-                margin: 10px 0;
+            .btn-container {
+                flex-direction: column;
             }
 
-            .modal-content {
-                width: 95%;
+            .btn {
+                width: 100%;
             }
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <div class="header <?php echo $status; ?>">
-            <h1>
-                <?php if ($status === 'success'): ?>
-                    ✅
-                <?php elseif ($status === 'warning'): ?>
-                    ⚠️
-                <?php elseif ($status === 'pending'): ?>
-                    📋
-                <?php else: ?>
-                    ❌
-                <?php endif; ?>
-            </h1>
-            <h2>
-                <?php if ($status === 'success'): ?>
-                    Inscription confirmée !
-                <?php elseif ($status === 'warning'): ?>
-                    Mission déjà pourvue
-                <?php elseif ($status === 'pending'): ?>
-                    Détails de la mission
-                <?php else: ?>
-                    Erreur
-                <?php endif; ?>
-            </h2>
+        <div class="header">
+            <h1>🤝 Entraide Plus Iroise</h1>
+            <p>Inscription à une mission</p>
         </div>
 
         <div class="content">
-            <?php if (!$showConfirmation): ?>
-                <div class="message">
+            <?php if ($status === 'choose_benevole'): ?>
+                <!-- NOUVEAU : Affichage du choix de bénévole -->
+                <div class="message info">
+                    <?php echo htmlspecialchars($message); ?>
+                </div>
+
+                <div class="benevole-selection">
+                    <form id="benevoleForm" method="get">
+                        <input type="hidden" name="mission" value="<?php echo htmlspecialchars($missionId); ?>">
+                        <input type="hidden" name="email" value="<?php echo htmlspecialchars($email); ?>">
+                        <input type="hidden" name="token" value="<?php echo htmlspecialchars($token); ?>">
+                        <?php if (!empty($emetteurEmail)): ?>
+                            <input type="hidden" name="emetteur" value="<?php echo htmlspecialchars($emetteurEmail); ?>">
+                        <?php endif; ?>
+
+                        <?php foreach ($benevoles as $benevole): ?>
+                            <label class="benevole-option">
+                                <input type="radio" name="benevole_id" value="<?php echo $benevole['id_benevole']; ?>" required>
+                                <div class="benevole-info-select">
+                                    <div class="benevole-name-select"><?php echo htmlspecialchars($benevole['nom']); ?></div>
+                                    <div class="benevole-details-select">
+                                        <?php if (!empty($benevole['commune'])): ?>
+                                            📍 <?php echo htmlspecialchars($benevole['commune']); ?>
+                                        <?php endif; ?>
+                                        <?php if (!empty($benevole['secteur'])): ?>
+                                            • Secteur: <?php echo htmlspecialchars($benevole['secteur']); ?>
+                                        <?php endif; ?>
+                                    </div>
+                                </div>
+                            </label>
+                        <?php endforeach; ?>
+
+                        <div class="btn-container">
+                            <button type="submit" class="btn">✅ Continuer avec ce profil</button>
+                        </div>
+                    </form>
+                </div>
+
+                <?php if ($missionDetails): ?>
+                    <!-- Aperçu de la mission -->
+                    <div class="mission-details">
+                        <h3>📋 Aperçu de la mission</h3>
+                        
+                        <div class="aide-name">
+                            👤 <?php echo htmlspecialchars($missionDetails['aide_nom']); ?>
+                        </div>
+
+                        <div class="detail-item">
+                            <strong>📅 Date et heure</strong>
+                            <?php echo formatDate($missionDetails['date_mission']); ?>
+                            <?php if (!empty($missionDetails['heure_rdv'])): ?>
+                                à <?php echo substr($missionDetails['heure_rdv'], 0, 5); ?>
+                            <?php endif; ?>
+                        </div>
+
+                        <div class="detail-item">
+                            <strong>🏠 Lieu</strong>
+                            <?php echo htmlspecialchars($missionDetails['aide_commune']); ?>
+                        </div>
+                    </div>
+                <?php endif; ?>
+
+            <?php elseif (!$showConfirmation): ?>
+                <div class="message <?php echo $status; ?>">
                     <?php echo htmlspecialchars($message); ?>
                 </div>
             <?php endif; ?>
 
-            <?php if ($missionDetails): ?>
+            <?php if ($missionDetails && !$showBenevoleChoice): ?>
                 <div class="mission-details">
                     <h3>📋 Détails de la mission</h3>
                     
@@ -711,6 +917,24 @@ $confirmationEmail .= '<p style="margin-top:20px;">Merci pour votre engagement !
                 closeModal();
             }
         }
+        <?php endif; ?>
+
+        <?php if ($status === 'choose_benevole'): ?>
+        // Améliorer l'UX des options radio
+        document.querySelectorAll('.benevole-option').forEach(option => {
+            option.addEventListener('click', function() {
+                // Désélectionner tous les autres
+                document.querySelectorAll('.benevole-option').forEach(opt => {
+                    opt.style.borderColor = '#e0e0e0';
+                    opt.style.backgroundColor = 'white';
+                });
+                // Sélectionner celui-ci
+                this.style.borderColor = '#667eea';
+                this.style.backgroundColor = '#f0f4ff';
+                // Cocher le radio button
+                this.querySelector('input[type="radio"]').checked = true;
+            });
+        });
         <?php endif; ?>
     </script>
 </body>

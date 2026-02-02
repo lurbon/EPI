@@ -55,6 +55,42 @@ function formatPhone($phone) {
     return $phone;
 }
 
+// Récupérer l'email de l'utilisateur connecté (émetteur)
+$currentUserEmail = '';
+
+// Le système d'auth personnalisé stocke les données dans $_SESSION['user']
+if (isset($_SESSION['user'])) {
+    // Essayer différents champs possibles pour l'email
+    if (isset($_SESSION['user']['email'])) {
+        $currentUserEmail = $_SESSION['user']['email'];
+    } elseif (isset($_SESSION['user']['courriel'])) {
+        $currentUserEmail = $_SESSION['user']['courriel'];
+    } elseif (isset($_SESSION['user']['mail'])) {
+        $currentUserEmail = $_SESSION['user']['mail'];
+    }
+    
+    // Si toujours vide, essayer de récupérer depuis la base avec le username
+    if (empty($currentUserEmail) && isset($_SESSION['user']['username'])) {
+        try {
+            $sqlUser = "SELECT courriel FROM EPI_benevole WHERE LOWER(nom) = LOWER(:username) LIMIT 1";
+            $stmtUser = $conn->prepare($sqlUser);
+            $stmtUser->execute(['username' => $_SESSION['user']['username']]);
+            $userData = $stmtUser->fetch(PDO::FETCH_ASSOC);
+            if ($userData && !empty($userData['courriel'])) {
+                $currentUserEmail = $userData['courriel'];
+            }
+        } catch(PDOException $e) {
+            error_log("Erreur récupération email: " . $e->getMessage());
+        }
+    }
+}
+
+// Si toujours vide, utiliser un email par défaut (À CONFIGURER)
+if (empty($currentUserEmail)) {
+    // OPTION : Mettre un email fixe ici si besoin
+    // $currentUserEmail = 'coordination@entraide-iroise.fr';
+}
+
 // Traitement de l'envoi d'email
 $emailSent = false;
 $emailError = false;
@@ -119,7 +155,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['send_email'])) {
                 foreach ($missions as $index => $mission) {
                     $token = generateSecureToken($mission['id_mission'], $email);
                     $inscriptionUrl = $baseUrl . '/inscrire_mission.php?mission=' . $mission['id_mission'] . 
-                                     '&email=' . urlencode($email) . '&token=' . $token;
+                                     '&email=' . urlencode($email) . '&token=' . $token . 
+                                     '&emetteur=' . urlencode($currentUserEmail);
                     
                     $missionsHtml .= '
                     <div style="background: #ffffff; border-left: 4px solid #667eea; padding: 20px; margin-bottom: 20px; border-radius: 8px;">
@@ -300,19 +337,29 @@ if (isset($_GET['get_benevoles'])) {
     header('Content-Type: application/json');
     try {
         if (isset($_GET['all']) && $_GET['all'] === '1') {
-            // Tous les bénévoles avec flag_mail = 'O'
-            $sqlBenevoles = "SELECT id_benevole, nom, courriel, secteur 
+            // Tous les bénévoles avec flag_mail = 'O', groupés par email
+            $sqlBenevoles = "SELECT 
+                                GROUP_CONCAT(nom ORDER BY nom SEPARATOR ', ') as noms,
+                                courriel, 
+                                GROUP_CONCAT(DISTINCT secteur ORDER BY secteur SEPARATOR ', ') as secteurs,
+                                COUNT(*) as nb_benevoles
                             FROM EPI_benevole 
                             WHERE courriel IS NOT NULL AND courriel != '' AND flag_mail='O'
-                            ORDER BY secteur, nom";
+                            GROUP BY courriel
+                            ORDER BY secteurs, noms";
             $stmtBenevoles = $conn->prepare($sqlBenevoles);
             $stmtBenevoles->execute();
         } else if (isset($_GET['secteur'])) {
-            // Bénévoles du secteur spécifique
-            $sqlBenevoles = "SELECT id_benevole, nom, courriel, secteur 
+            // Bénévoles du secteur spécifique, groupés par email
+            $sqlBenevoles = "SELECT 
+                                GROUP_CONCAT(nom ORDER BY nom SEPARATOR ', ') as noms,
+                                courriel,
+                                secteur as secteurs,
+                                COUNT(*) as nb_benevoles
                             FROM EPI_benevole 
                             WHERE secteur = :secteur AND courriel IS NOT NULL AND courriel != '' AND flag_mail='O'
-                            ORDER BY nom";
+                            GROUP BY courriel
+                            ORDER BY noms";
             $stmtBenevoles = $conn->prepare($sqlBenevoles);
             $stmtBenevoles->execute(['secteur' => $_GET['secteur']]);
         } else {
@@ -1240,7 +1287,7 @@ $totalMissions = array_sum(array_map('count', $missionsBySecteur));
 
     <div class="container">
         <h1>📋 Missions sans Bénévoles Assignés</h1>
-
+        
         <?php if ($emailSent): ?>
             <div class="alert alert-success">
                 ✅ Email envoyé avec succès à <?php echo $emailCount; ?> bénévole<?php echo $emailCount > 1 ? 's' : ''; ?> !
@@ -1381,6 +1428,19 @@ $totalMissions = array_sum(array_map('count', $missionsBySecteur));
                 <span class="close-modal" onclick="closeEmailModal()">&times;</span>
                 <h2>📧 Notifier les bénévoles</h2>
             </div>
+            
+            <?php if (!empty($currentUserEmail)): ?>
+            <div style="background: #e7f3ff; border-left: 4px solid #2196F3; padding: 12px 20px; border-radius: 8px; margin-bottom: 20px;">
+                <small style="color: #1976d2; display: block; margin-bottom: 5px;">
+                    <strong>💡 Information :</strong>
+                </small>
+                <span style="color: #0d47a1; font-size: 13px;">
+                    Vous recevrez une copie de chaque confirmation d'inscription à : 
+                    <strong><?php echo htmlspecialchars($currentUserEmail); ?></strong>
+                </span>
+            </div>
+            <?php endif; ?>
+            
             <form method="POST" action="" id="emailForm">
                 <input type="hidden" name="send_email" value="1">
                 <input type="hidden" name="secteur" id="modal-secteur" value="">
@@ -1611,8 +1671,12 @@ $totalMissions = array_sum(array_map('count', $missionsBySecteur));
                         return;
                     }
                     
+                    // Compter le nombre total de bénévoles (en additionnant nb_benevoles)
+                    const totalBenevoles = data.reduce((sum, item) => sum + parseInt(item.nb_benevoles || 1), 0);
+                    const nbEmails = data.length;
+                    
                     let html = '<div class="select-all-container">';
-                    html += '<span class="benevole-count">' + data.length + ' bénévole' + (data.length > 1 ? 's' : '') + ' disponible' + (data.length > 1 ? 's' : '') + '</span>';
+                    html += '<span class="benevole-count">' + totalBenevoles + ' bénévole' + (totalBenevoles > 1 ? 's' : '') + ' (' + nbEmails + ' email' + (nbEmails > 1 ? 's' : '') + ')</span>';
                     html += '<button type="button" class="select-all-btn" onclick="toggleSelectAll()">✓ Tout sélectionner</button>';
                     html += '</div>';
                     html += '<div class="benevoles-list">';
@@ -1621,10 +1685,11 @@ $totalMissions = array_sum(array_map('count', $missionsBySecteur));
                         html += '<label class="benevole-item">';
                         html += '<input type="checkbox" name="benevoles[]" value="' + benevole.courriel + '">';
                         html += '<div class="benevole-info">';
-                        html += '<div class="benevole-name">' + benevole.nom + '</div>';
+                        // Afficher les noms groupés (peut être plusieurs noms séparés par des virgules)
+                        html += '<div class="benevole-name">' + benevole.noms + '</div>';
                         html += '<div class="benevole-email">' + benevole.courriel + '</div>';
-                        if (loadAll && benevole.secteur) {
-                            html += '<div class="benevole-secteur">Secteur: ' + benevole.secteur + '</div>';
+                        if (loadAll && benevole.secteurs) {
+                            html += '<div class="benevole-secteur">Secteur: ' + benevole.secteurs + '</div>';
                         }
                         html += '</div>';
                         html += '</label>';

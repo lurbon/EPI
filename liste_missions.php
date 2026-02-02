@@ -73,6 +73,31 @@ try {
     // Ignorer l'erreur
 }
 
+// Fonction pour générer une couleur unique pour chaque secteur
+function getSecteurColor($secteur) {
+    // Palette de couleurs pastel distinctives
+    $colors = [
+        ['bg' => '#FFE5E5', 'text' => '#C41E3A'],  // Rouge pastel
+        ['bg' => '#E5F3FF', 'text' => '#0066CC'],  // Bleu pastel
+        ['bg' => '#E8F5E9', 'text' => '#2E7D32'],  // Vert pastel
+        ['bg' => '#FFF3E0', 'text' => '#E65100'],  // Orange pastel
+        ['bg' => '#F3E5F5', 'text' => '#7B1FA2'],  // Violet pastel
+        ['bg' => '#FFF9C4', 'text' => '#F57F17'],  // Jaune pastel
+        ['bg' => '#E0F2F1', 'text' => '#00695C'],  // Turquoise pastel
+        ['bg' => '#FCE4EC', 'text' => '#C2185B'],  // Rose pastel
+        ['bg' => '#E1F5FE', 'text' => '#0277BD'],  // Cyan pastel
+        ['bg' => '#F1F8E9', 'text' => '#558B2F'],  // Vert lime pastel
+        ['bg' => '#FBE9E7', 'text' => '#D84315'],  // Orange brûlé pastel
+        ['bg' => '#EDE7F6', 'text' => '#5E35B1'],  // Indigo pastel
+    ];
+    
+    // Générer un index basé sur le hash du nom du secteur
+    $hash = crc32($secteur);
+    $index = abs($hash) % count($colors);
+    
+    return $colors[$index];
+}
+
 // Grouper les missions par mois
 $missionsByMonth = [];
 $currentMonthKey = date('Y-m'); // Mois courant au format Y-m
@@ -277,6 +302,16 @@ foreach($missions as $m) {
             overflow-x: auto;
             padding-bottom: 10px;
             margin-bottom: 20px;
+            position: sticky;
+            top: 0;
+            background: white;
+            z-index: 100;
+            padding-top: 10px;
+            margin-left: -30px;
+            margin-right: -30px;
+            padding-left: 30px;
+            padding-right: 30px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
         }
 
         .tab {
@@ -444,8 +479,7 @@ foreach($missions as $m) {
         }
 
         .badge-secteur {
-            background: #d1ecf1;
-            color: #0c5460;
+            /* Les couleurs sont définies dynamiquement via inline style */
         }
 
         .warning-km {
@@ -732,8 +766,10 @@ foreach($missions as $m) {
                                             <td><a href="modifier_mission.php?id=<?php echo intval($mission['id_mission']); ?>" class="link-modifier" onclick="event.stopPropagation()"><?php echo htmlspecialchars($mission['benevole'] ?: ''); ?></a></td>
                                             <td><?php echo htmlspecialchars($mission['aide']); ?></td>
                                             <td>
-                                                <?php if($mission['secteur_aide']): ?>
-                                                    <span class="badge badge-secteur"><?php echo htmlspecialchars($mission['secteur_aide']); ?></span>
+                                                <?php if($mission['secteur_aide']): 
+                                                    $secteurColor = getSecteurColor($mission['secteur_aide']);
+                                                ?>
+                                                    <span class="badge badge-secteur" style="background-color: <?php echo $secteurColor['bg']; ?>; color: <?php echo $secteurColor['text']; ?>;"><?php echo htmlspecialchars($mission['secteur_aide']); ?></span>
                                                 <?php else: ?>
                                                     -
                                                 <?php endif; ?>
@@ -853,6 +889,12 @@ foreach($missions as $m) {
             // Activer l'onglet sélectionné
             event.target.classList.add('active');
             document.getElementById('tab-' + monthKey).classList.add('active');
+            
+            // Faire défiler vers le haut de la page
+            window.scrollTo({
+                top: 0,
+                behavior: 'smooth'
+            });
         }
 
         function showDetails(mission) {
@@ -909,6 +951,29 @@ foreach($missions as $m) {
         document.addEventListener('keydown', function(event) {
             if (event.key === 'Escape') {
                 closeModal();
+            }
+        });
+
+        // Activer automatiquement l'onglet du mois en cours au chargement
+        document.addEventListener('DOMContentLoaded', function() {
+            const currentMonthKey = '<?php echo $currentMonthKey; ?>';
+            const currentTab = document.querySelector('.tab[onclick*="' + currentMonthKey + '"]');
+            const currentContent = document.getElementById('tab-' + currentMonthKey);
+            
+            if (currentTab && currentContent) {
+                // Désactiver tous les onglets
+                document.querySelectorAll('.tab').forEach(tab => {
+                    tab.classList.remove('active');
+                });
+                
+                // Cacher tout le contenu
+                document.querySelectorAll('.tab-content').forEach(content => {
+                    content.classList.remove('active');
+                });
+                
+                // Activer l'onglet et le contenu du mois en cours
+                currentTab.classList.add('active');
+                currentContent.classList.add('active');
             }
         });
     </script>

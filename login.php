@@ -169,6 +169,54 @@ $_SESSION['token_expires_absolute'] = time() + 10800; // Expiration ABSOLUE - 3 
 $_SESSION['last_activity'] = time(); // Pour détecter l'inactivité
 $_SESSION['login_time'] = time();
 
+// Fermer automatiquement les anciennes sessions actives de cet utilisateur
+try {
+    // Trouver toutes les sessions actives de cet utilisateur
+    $stmtOldSessions = $pdo->prepare("
+        SELECT 
+            id,
+            session_id,
+            date_connexion,
+            TIMESTAMPDIFF(SECOND, date_connexion, NOW()) as duree_seconds
+        FROM connexions_log
+        WHERE user_id = ?
+        AND date_deconnexion IS NULL
+        AND statut = 'success'
+        ORDER BY date_connexion DESC
+    ");
+    $stmtOldSessions->execute([$userData['id']]);
+    $oldSessions = $stmtOldSessions->fetchAll(PDO::FETCH_ASSOC);
+    
+    if (count($oldSessions) > 0) {
+        // Fermer toutes les anciennes sessions
+        $stmtCloseSession = $pdo->prepare("
+            UPDATE connexions_log 
+            SET date_deconnexion = NOW(),
+                duree_session = ?,
+                message = CONCAT(
+                    COALESCE(message, 'Connexion réussie'), 
+                    ' [Déconnexion automatique - nouvelle connexion détectée depuis ', ?, ']'
+                )
+            WHERE id = ?
+        ");
+        
+        foreach ($oldSessions as $oldSession) {
+            $stmtCloseSession->execute([
+                $oldSession['duree_seconds'],
+                $ipAddress,
+                $oldSession['id']
+            ]);
+        }
+        
+        // Logger le nombre de sessions fermées
+        error_log("login.php: " . count($oldSessions) . " ancienne(s) session(s) fermée(s) pour l'utilisateur " . $userData['username']);
+    }
+    
+} catch (PDOException $e) {
+    // Continuer même si la fermeture des anciennes sessions échoue
+    error_log("Erreur fermeture anciennes sessions: " . $e->getMessage());
+}
+
 // Logger la connexion réussie
 try {
     $stmt = $pdo->prepare("
