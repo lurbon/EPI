@@ -82,9 +82,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['id_aide'])) {
                 code_postal = :code_postal, commune = :commune, tel_fixe = :tel_fixe,
                 tel_portable = :tel_portable, courriel = :courriel, tel_contact = :tel_contact,
                 lien_parente = :lien_parente, nom_contact = :nom_contact, secteur = :secteur,
-                date_debut = :date_debut, date_fin = :date_fin, commentaires = :commentaires,
-                p_2026 = :p_2026, moyen = :moyen, date_paiement = :date_paiement,
-                observation = :observation
+                date_debut = :date_debut, date_fin = :date_fin, commentaires = :commentaires
                 WHERE id_aide = :id_aide";
         
         $stmt = $conn->prepare($sql);
@@ -104,10 +102,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['id_aide'])) {
             ':date_debut' => !empty($_POST['date_debut']) ? $_POST['date_debut'] : null,
             ':date_fin' => !empty($_POST['date_fin']) ? $_POST['date_fin'] : null,
             ':commentaires' => !empty($_POST['commentaires']) ? $_POST['commentaires'] : null,
-            ':p_2026' => !empty($_POST['p_2026']) ? $_POST['p_2026'] : null,
-            ':moyen' => !empty($_POST['moyen']) ? $_POST['moyen'] : null,
-            ':date_paiement' => !empty($_POST['date_paiement']) ? $_POST['date_paiement'] : null,
-            ':observation' => !empty($_POST['observation']) ? $_POST['observation'] : null,
             ':id_aide' => $_POST['id_aide']
         ]);
         
@@ -586,12 +580,12 @@ if (isset($_GET['success'])) {
             <h3>💰 Cotisation</h3>
             <div class="row">
                 <div class="form-group">
-                    <label for="p_2026">Cotisation 2026 (€)</label>
-                    <input type="number" step="0.01" id="p_2026" name="p_2026" value="<?php echo $aide['p_2026']; ?>">
+                    <label for="p_2026">Cotisation 2026 (€) - Consultation seule</label>
+                    <input type="number" step="0.01" id="p_2026" name="p_2026" value="<?php echo $aide['p_2026']; ?>" readonly style="background-color: #f0f0f0; cursor: not-allowed;">
                 </div>
                 <div class="form-group">
-                    <label for="moyen">Moyen de paiement</label>
-                    <select id="moyen" name="moyen">
+                    <label for="moyen">Moyen de paiement - Consultation seule</label>
+                    <select id="moyen" name="moyen" disabled style="background-color: #f0f0f0; cursor: not-allowed;">
                         <option value="">-- Non renseigné --</option>
                         <?php foreach($moyensPaiement as $moyen): ?>
                             <option value="<?php echo htmlspecialchars($moyen); ?>" 
@@ -604,13 +598,13 @@ if (isset($_GET['success'])) {
             </div>
 
             <div class="form-group">
-                <label for="date_paiement">Date de paiement</label>
-                <input type="date" id="date_paiement" name="date_paiement" value="<?php echo $aide['date_paiement']; ?>">
+                <label for="date_paiement">Date de paiement - Consultation seule</label>
+                <input type="date" id="date_paiement" name="date_paiement" value="<?php echo $aide['date_paiement']; ?>" readonly style="background-color: #f0f0f0; cursor: not-allowed;">
             </div>
 
             <div class="form-group">
-                <label for="observation">Observations</label>
-                <textarea id="observation" name="observation"><?php echo htmlspecialchars($aide['observation']); ?></textarea>
+                <label for="observation">Observations - Consultation seule</label>
+                <textarea id="observation" name="observation" readonly style="background-color: #f0f0f0; cursor: not-allowed;"><?php echo htmlspecialchars($aide['observation']); ?></textarea>
             </div>
 
             <button type="submit" class="btn-submit">💾 Enregistrer les modifications</button>

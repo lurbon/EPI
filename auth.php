@@ -9,9 +9,10 @@
  * - Timeout de session cohérent (3 heures absolu, 30 min inactivité)
  * - Protection contre Session Fixation
  * - Protection contre MIME sniffing, Clickjacking, XSS
+ * - GESTION D'UNE SEULE CONNEXION PAR UTILISATEUR
  *
  * Date de création : 2026-01-21
- * Dernière modification : 2026-01-21
+ * Dernière modification : 2026-02-03
  */
 
 // Configuration sécurisée des sessions AVANT session_start()
@@ -34,6 +35,68 @@ require_once(__DIR__ . '/security-headers.php');
 // Constantes de configuration
 define('SESSION_TIMEOUT_ABSOLUTE', 10800);  // 3 heures (doit correspondre à login.php)
 define('SESSION_TIMEOUT_INACTIVITY', 3600); // 1 heure (60 minutes)
+
+/**
+ * Vérifie si cette session est toujours la session active pour cet utilisateur
+ * 
+ * IMPORTANT: Utilise le session_id PHP pour permettre plusieurs onglets du même navigateur
+ * tout en bloquant les connexions depuis d'autres appareils/navigateurs
+ * 
+ * @return bool True si c'est la session active, False sinon
+ */
+function verifierSessionUnique() {
+    // Vérifier que nous avons les informations nécessaires
+    if (!isset($_SESSION['user']['id'])) {
+        return false;
+    }
+    
+    try {
+        // Charger la configuration WordPress
+        require_once(__DIR__ . '/wp-config.php');
+        
+        $pdo = new PDO(
+            "mysql:host=" . DB_HOST . ";dbname=" . DB_NAME . ";charset=utf8mb4",
+            DB_USER,
+            DB_PASSWORD,
+            [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]
+        );
+        
+        // Récupérer le session_id actuel
+        $currentSessionId = session_id();
+        
+        // Vérifier si cette session (par session_id) est active en BDD
+        $stmt = $pdo->prepare("
+            SELECT 
+                id,
+                date_deconnexion,
+                session_id
+            FROM connexions_log 
+            WHERE user_id = ?
+            AND session_id = ?
+            AND statut = 'success'
+            ORDER BY date_connexion DESC
+            LIMIT 1
+        ");
+        $stmt->execute([$_SESSION['user']['id'], $currentSessionId]);
+        $sessionActive = $stmt->fetch(PDO::FETCH_ASSOC);
+        
+        if (!$sessionActive) {
+            // Aucune session trouvée avec ce session_id
+            return false;
+        }
+        
+        // Vérifier si la session est fermée
+        if ($sessionActive['date_deconnexion'] !== null) {
+            return false;
+        }
+        
+        return true;
+        
+    } catch (PDOException $e) {
+        error_log("Erreur vérification session unique: " . $e->getMessage());
+        return false;
+    }
+}
 
 /**
  * Enregistre une déconnexion automatique dans la base de données
@@ -110,6 +173,16 @@ function verifierAuthentification() {
     // Vérifier si les données utilisateur existent
     if (!isset($_SESSION['user']) || empty($_SESSION['user'])) {
         redirectionLogin("Données utilisateur manquantes");
+        return false;
+    }
+    
+    // 🔒 NOUVEAU : Vérifier que cette session est toujours la session active
+    // Détecte si une nouvelle connexion a eu lieu depuis un autre appareil/navigateur
+    if (!verifierSessionUnique()) {
+        // Enregistrer la déconnexion automatique dans la base
+        enregistrerDeconnexionAuto('nouvelle_connexion_detectee');
+        session_destroy();
+        redirectionLogin("Une nouvelle connexion a été détectée depuis un autre appareil. Vous avez été déconnecté.");
         return false;
     }
 
@@ -266,6 +339,17 @@ if (!verifierAuthentification()) {
 
 // Mettre à jour la dernière activité (pour le timeout d'inactivité)
 $_SESSION['last_activity'] = time();
+
+// Mettre à jour l'activité dans la base de données toutes les 5 minutes
+// (pour éviter trop de requêtes SQL)
+if (!isset($_SESSION['last_activity_db_update']) || 
+    (time() - $_SESSION['last_activity_db_update']) > 300) { // 5 minutes
+    
+    require_once(__DIR__ . '/activity_tracker.php');
+    if (enregistrerActiviteDB()) {
+        $_SESSION['last_activity_db_update'] = time();
+    }
+}
 
 // ⚠️ IMPORTANT : NE PAS renouveler token_expires_absolute ici !
 // La session doit expirer définitivement après SESSION_TIMEOUT_ABSOLUTE (3 heures)

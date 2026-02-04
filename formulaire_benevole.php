@@ -80,11 +80,11 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         $sql = "INSERT INTO EPI_benevole (nom, date_naissance, adresse, code_postal, commune, 
                 tel_fixe, tel_mobile, courriel, secteur, commentaires, debut, fin, 
                 lundi, mardi, mercredi, jeudi, vendredi, immatriculation, chevaux_fiscaux, 
-                type, flag_mail, p_2026, moyen, date_1, observations_1, dons, date_2, observations_2) 
+                type, flag_mail, dons, date_2, observations_2) 
                 VALUES (:nom, :date_naissance, :adresse, :code_postal, :commune, 
                 :tel_fixe, :tel_mobile, :courriel, :secteur, :commentaires, :debut, :fin, 
                 :lundi, :mardi, :mercredi, :jeudi, :vendredi, :immatriculation, :chevaux_fiscaux, 
-                :type, :flag_mail, :p_2026, :moyen, :date_1, :observations_1, :dons, :date_2, :observations_2)";
+                :type, :flag_mail, :dons, :date_2, :observations_2)";
         
         $stmt = $conn->prepare($sql);
         
@@ -109,10 +109,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         $stmt->bindParam(':chevaux_fiscaux', $_POST['chevaux_fiscaux']);
         $stmt->bindParam(':type', $_POST['type']);
         $stmt->bindParam(':flag_mail', $_POST['flag_mail']);
-        $stmt->bindParam(':p_2026', $_POST['p_2026']);
-        $stmt->bindParam(':moyen', $_POST['moyen']);
-        $stmt->bindParam(':date_1', $_POST['date_1']);
-        $stmt->bindParam(':observations_1', $_POST['observations_1']);
         $stmt->bindParam(':dons', $_POST['dons']);
         $stmt->bindParam(':date_2', $_POST['date_2']);
         $stmt->bindParam(':observations_2', $_POST['observations_2']);
@@ -649,35 +645,6 @@ $dateJour = date('Y-m-d');
                         <?php endforeach; ?>
                     </select>
                 </div>
-            </div>
-
-            <h3>💰 Cotisation</h3>
-            <div class="row">
-                <div class="form-group">
-                    <label for="p_2026">Cotisation 2026 (€)</label>
-                    <input type="number" step="0.01" id="p_2026" name="p_2026" placeholder="Ex: 25.00">
-                </div>
-                <div class="form-group">
-                    <label for="moyen">Moyen de paiement</label>
-                    <select id="moyen" name="moyen">
-                        <option value="">-- Non renseigné --</option>
-                        <?php foreach($moyensPaiement as $moyen): ?>
-                            <option value="<?php echo htmlspecialchars($moyen); ?>">
-                                <?php echo htmlspecialchars($moyen); ?>
-                            </option>
-                        <?php endforeach; ?>
-                    </select>
-                </div>
-            </div>
-
-            <div class="form-group">
-                <label for="date_1">Date de paiement</label>
-                <input type="date" id="date_1" name="date_1">
-            </div>
-
-            <div class="form-group">
-                <label for="observations_1">Observations</label>
-                <textarea id="observations_1" name="observations_1"></textarea>
             </div>
 
             <h3>📧 Autres informations</h3>

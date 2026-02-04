@@ -28,6 +28,7 @@ try {
     foreach($benevoles as &$b) {
         $b['tel_portable'] = isset($b['tel_mobile']) ? $b['tel_mobile'] : '';
     }
+    unset($b); // Détruire la référence pour éviter les problèmes
 } catch(PDOException $e) {
     // Si erreur (champs manquants), essayer avec seulement les champs de base
     try {
@@ -40,6 +41,7 @@ try {
             if (!isset($b['tel_fixe'])) $b['tel_fixe'] = '';
             $b['tel_portable'] = '';
         }
+        unset($b); // Détruire la référence pour éviter les problèmes
     } catch(PDOException $e2) {
         // En dernier recours, juste id et nom
         try {
@@ -52,6 +54,7 @@ try {
                 $b['tel_fixe'] = '';
                 $b['tel_portable'] = '';
             }
+            unset($b); // Détruire la référence pour éviter les problèmes
         } catch(PDOException $e3) {}
     }
 }
@@ -73,6 +76,7 @@ try {
             if (!isset($a['tel_fixe'])) $a['tel_fixe'] = '';
             if (!isset($a['tel_portable'])) $a['tel_portable'] = '';
         }
+        unset($a); // Détruire la référence pour éviter les problèmes
     } catch(PDOException $e2) {
         // En dernier recours, juste id et nom
         try {
@@ -85,6 +89,7 @@ try {
                 $a['tel_fixe'] = '';
                 $a['tel_portable'] = '';
             }
+            unset($a); // Détruire la référence pour éviter les problèmes
         } catch(PDOException $e3) {}
     }
 }
@@ -135,26 +140,37 @@ $premierJourMoisCourant = date('Y-m-01');
 
 // Récupérer les missions pour le filtre avec recherche (uniquement mois courant et futurs)
 $missions = [];
-$searchTerm = isset($_GET['search']) ? $_GET['search'] : '';
+$searchAide = isset($_GET['search_aide']) ? $_GET['search_aide'] : '';
+$searchBenevole = isset($_GET['search_benevole']) ? $_GET['search_benevole'] : '';
+$searchDate = isset($_GET['search_date']) ? $_GET['search_date'] : '';
 
 try {
-    if ($searchTerm) {
-        $stmt = $conn->prepare("SELECT id_mission, date_mission, aide 
-                               FROM EPI_mission 
-                               WHERE date_mission >= :date_limite 
-                               AND aide LIKE :search 
-                               ORDER BY date_mission DESC LIMIT 100");
-        $stmt->execute([
-            ':date_limite' => $premierJourMoisCourant,
-            ':search' => "%$searchTerm%"
-        ]);
-    } else {
-        $stmt = $conn->prepare("SELECT id_mission, date_mission, aide 
-                               FROM EPI_mission 
-                               WHERE date_mission >= :date_limite 
-                               ORDER BY date_mission DESC LIMIT 100");
-        $stmt->execute([':date_limite' => $premierJourMoisCourant]);
+    // Construire la requête SQL dynamiquement selon les filtres actifs
+    $sql = "SELECT id_mission, date_mission, aide, benevole 
+            FROM EPI_mission 
+            WHERE date_mission >= :date_limite";
+    
+    $params = [':date_limite' => $premierJourMoisCourant];
+    
+    if ($searchAide) {
+        $sql .= " AND aide LIKE :search_aide";
+        $params[':search_aide'] = "%$searchAide%";
     }
+    
+    if ($searchBenevole) {
+        $sql .= " AND benevole LIKE :search_benevole";
+        $params[':search_benevole'] = "%$searchBenevole%";
+    }
+    
+    if ($searchDate) {
+        $sql .= " AND date_mission = :search_date";
+        $params[':search_date'] = $searchDate;
+    }
+    
+    $sql .= " ORDER BY date_mission DESC LIMIT 100";
+    
+    $stmt = $conn->prepare($sql);
+    $stmt->execute($params);
     $missions = $stmt->fetchAll(PDO::FETCH_ASSOC);
 } catch(PDOException $e) {}
 
@@ -773,23 +789,57 @@ if (isset($_GET['success'])) {
         <?php if (!isset($_GET['id'])): ?>
         <div class="search-box">
             <label>🔍 Rechercher une mission</label>
-            <form method="GET" class="search-row">
-                <input type="text" name="search" placeholder="Rechercher par nom de l'aidé..." 
-                       value="<?php echo htmlspecialchars($searchTerm); ?>">
-                <button type="submit">Rechercher</button>
+            <form method="GET">
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; margin-bottom: 10px;">
+                    <div>
+                        <input type="date" name="search_date" placeholder="Date" 
+                               value="<?php echo htmlspecialchars($searchDate); ?>"
+                               title="Filtrer par date exacte">
+                    </div>
+                    <div>
+                        <input type="text" name="search_aide" placeholder="Nom de l'aidé..." 
+                               value="<?php echo htmlspecialchars($searchAide); ?>"
+                               title="Rechercher dans les noms d'aidés">
+                    </div>
+                    <div>
+                        <input type="text" name="search_benevole" placeholder="Nom du bénévole..." 
+                               value="<?php echo htmlspecialchars($searchBenevole); ?>"
+                               title="Rechercher dans les noms de bénévoles">
+                    </div>
+                </div>
+                <div style="display: flex; gap: 10px;">
+                    <button type="submit" style="flex: 1;">🔍 Rechercher</button>
+                    <a href="<?php echo $_SERVER['PHP_SELF']; ?>" 
+                       style="flex: 1; padding: 12px; background: #6c757d; color: white; border: none; border-radius: 8px; font-weight: 600; text-align: center; text-decoration: none; display: block;">
+                        🔄 Réinitialiser
+                    </a>
+                </div>
             </form>
 
             <?php if ($missions): ?>
-            <select onchange="if(this.value) window.location.href='?id='+this.value<?php echo $searchTerm ? '+(\'&search='.urlencode($searchTerm).'\')' : ''; ?>">
-                <option value="">-- Sélectionnez une mission --</option>
+            <select onchange="if(this.value) { 
+                var url = '?id=' + this.value;
+                <?php if ($searchAide): ?>url += '&search_aide=<?php echo urlencode($searchAide); ?>';<?php endif; ?>
+                <?php if ($searchBenevole): ?>url += '&search_benevole=<?php echo urlencode($searchBenevole); ?>';<?php endif; ?>
+                <?php if ($searchDate): ?>url += '&search_date=<?php echo urlencode($searchDate); ?>';<?php endif; ?>
+                window.location.href = url;
+            }">
+                <option value="">-- Sélectionnez une mission (<?php echo count($missions); ?> trouvée(s)) --</option>
                 <?php foreach($missions as $m): ?>
                     <option value="<?php echo $m['id_mission']; ?>" 
                             <?php echo (isset($_GET['id']) && $_GET['id'] == $m['id_mission']) ? 'selected' : ''; ?>>
                         <?php echo date('d/m/Y', strtotime($m['date_mission'])); ?> - 
                         <?php echo htmlspecialchars($m['aide']); ?>
+                        <?php if ($m['benevole']): ?>
+                            (Bénévole: <?php echo htmlspecialchars($m['benevole']); ?>)
+                        <?php endif; ?>
                     </option>
                 <?php endforeach; ?>
             </select>
+            <?php elseif ($searchAide || $searchBenevole || $searchDate): ?>
+                <p style="text-align: center; color: #666; margin-top: 15px; background: #fff3cd; padding: 12px; border-radius: 8px;">
+                    ⚠️ Aucune mission ne correspond à vos critères de recherche.
+                </p>
             <?php else: ?>
                 <p style="text-align: center; color: #666; margin-top: 15px;">
                     Aucune mission trouvée pour le mois courant et les mois futurs.

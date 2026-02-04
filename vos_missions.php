@@ -69,7 +69,7 @@ try {
             $params[':search'] = "%$search%";
         }
 
-        $sql .= " ORDER BY m.date_mission DESC, m.heure_rdv DESC";
+        $sql .= " ORDER BY m.date_mission ASC, m.heure_rdv ASC";
 
         $stmt = $conn->prepare($sql);
         $stmt->execute($params);
@@ -414,6 +414,15 @@ $total_minutes = $total_duree_minutes % 60;
             cursor: pointer;
         }
 
+        tbody tr.mission-aujourd-hui {
+            background-color: #ffe4f0 !important;
+            border-left: 4px solid #ff69b4;
+        }
+
+        tbody tr.mission-aujourd-hui:hover {
+            background-color: #ffd1e8 !important;
+        }
+
         .badge {
             display: inline-block;
             padding: 3px 7px;
@@ -613,26 +622,26 @@ $total_minutes = $total_duree_minutes % 60;
             <div class="tabs-container">
                 <div class="tabs">
                     <?php
-                    $isFirst = true;
+                    $currentMonthKey = date('Y-m'); // Mois en cours au format YYYY-MM
                     foreach($missionsByMonth as $monthKey => $monthData):
+                        $isCurrentMonth = ($monthKey === $currentMonthKey);
                     ?>
-                        <div class="tab <?php echo $isFirst ? 'active' : ''; ?>" onclick="switchTab('<?php echo $monthKey; ?>')">
+                        <div class="tab <?php echo $isCurrentMonth ? 'active' : ''; ?>" onclick="switchTab('<?php echo $monthKey; ?>')">
                             <?php echo $monthData['label']; ?>
                             <span class="tab-badge"><?php echo $monthData['count']; ?></span>
                         </div>
                     <?php
-                        $isFirst = false;
                     endforeach;
                     ?>
                 </div>
 
                 <?php
-                $isFirst = true;
                 foreach($missionsByMonth as $monthKey => $monthData):
+                    $isCurrentMonth = ($monthKey === $currentMonthKey);
                     $mHeures = floor($monthData['duree_total_minutes'] / 60);
                     $mMinutes = $monthData['duree_total_minutes'] % 60;
                 ?>
-                    <div id="tab-<?php echo $monthKey; ?>" class="tab-content <?php echo $isFirst ? 'active' : ''; ?>">
+                    <div id="tab-<?php echo $monthKey; ?>" class="tab-content <?php echo $isCurrentMonth ? 'active' : ''; ?>">
                         <div class="month-stats">
                             <div class="month-stat-item">
                                 <div class="number"><?php echo $monthData['count']; ?></div>
@@ -663,8 +672,13 @@ $total_minutes = $total_duree_minutes % 60;
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    <?php foreach($monthData['missions'] as $mission): ?>
-                                        <tr onclick='showDetails(<?php echo json_encode($mission, JSON_HEX_APOS | JSON_HEX_QUOT); ?>)'>
+                                    <?php 
+                                    $dateAujourdhui = date('Y-m-d');
+                                    foreach($monthData['missions'] as $mission): 
+                                        $estAujourdhui = ($mission['date_mission'] === $dateAujourdhui);
+                                        $classeAujourdhui = $estAujourdhui ? ' mission-aujourd-hui' : '';
+                                    ?>
+                                        <tr class="<?php echo $classeAujourdhui; ?>" onclick='showDetails(<?php echo json_encode($mission, JSON_HEX_APOS | JSON_HEX_QUOT); ?>)'>
                                             <td><strong><?php echo date('d/m/Y', strtotime($mission['date_mission'])); ?></strong></td>
                                             <td><?php echo $mission['heure_rdv'] ? substr($mission['heure_rdv'], 0, 5) : '-'; ?></td>
                                             <td><?php echo htmlspecialchars($mission['aide']); ?></td>
@@ -713,7 +727,6 @@ $total_minutes = $total_duree_minutes % 60;
                         </div>
                     </div>
                 <?php
-                    $isFirst = false;
                 endforeach;
                 ?>
             </div>

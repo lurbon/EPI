@@ -22,7 +22,7 @@ if (!$utilisateur || !$token) {
 
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, #2c3e50 0%, #3d5a73 100%);
             min-height: 100vh;
             padding: 10px;
         }
@@ -46,11 +46,25 @@ if (!$utilisateur || !$token) {
             padding: 6px 12px;
             border-radius: 10px;
             box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-            display: flex;
-            justify-content: space-between;
+            display: grid;
+            grid-template-columns: 1fr auto 1fr;
             align-items: center;
-            flex-wrap: wrap;
-            gap: 6px;
+            gap: 10px;
+        }
+        
+        .user-bar .left-section {
+            justify-self: start;
+        }
+        
+        .user-bar .center-section {
+            justify-self: center;
+        }
+        
+        .user-bar .right-section {
+            justify-self: end;
+            display: flex;
+            gap: 10px;
+            align-items: center;
         }
 
         .user-info {
@@ -63,23 +77,23 @@ if (!$utilisateur || !$token) {
 
         .user-name {
             font-weight: 700;
-            color: #667eea;
+            color: #2c5f7c;
             font-size: 13px;
         }
 
         .user-role {
             padding: 2px 8px;
-            background: #e3f2fd;
+            background: #d4e3ed;
             border-radius: 8px;
             font-size: 10px;
             text-transform: uppercase;
             font-weight: 700;
-            color: #1976d2;
+            color: #2c5f7c;
         }
 
         .btn-logout {
             padding: 5px 10px;
-            background: #f56565;
+            background: #c0392b;
             color: white;
             border: none;
             border-radius: 6px;
@@ -90,14 +104,14 @@ if (!$utilisateur || !$token) {
         }
 
         .btn-logout:hover {
-            background: #e53e3e;
+            background: #a93226;
             transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(245,101,101,0.4);
+            box-shadow: 0 4px 12px rgba(192,57,43,0.4);
         }
 
         .btn-change-password {
             padding: 5px 10px;
-            background: #667eea;
+            background: #2c5f7c;
             color: white;
             border: none;
             border-radius: 6px;
@@ -110,9 +124,9 @@ if (!$utilisateur || !$token) {
         }
 
         .btn-change-password:hover {
-            background: #764ba2;
+            background: #1f4866;
             transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+            box-shadow: 0 4px 12px rgba(44, 95, 124, 0.4);
         }
 
         /* Containers */
@@ -139,7 +153,7 @@ if (!$utilisateur || !$token) {
         }
 
         h1 {
-            color: #667eea;
+            color: #2c5f7c;
             font-size: 20px;
             margin-bottom: 0;
             font-weight: 800;
@@ -154,13 +168,13 @@ if (!$utilisateur || !$token) {
         }
 
         .menu-card {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, #2c5f7c 0%, #3d7a9b 100%);
             border-radius: 10px;
             padding: 10px 8px;
             text-decoration: none;
             color: white;
             transition: all 0.3s ease;
-            box-shadow: 0 3px 10px rgba(102, 126, 234, 0.3);
+            box-shadow: 0 3px 10px rgba(44, 95, 124, 0.3);
             cursor: pointer;
             display: flex;
             flex-direction: column;
@@ -174,7 +188,7 @@ if (!$utilisateur || !$token) {
 
         .menu-card:hover {
             transform: translateY(-5px);
-            box-shadow: 0 10px 25px rgba(102, 126, 234, 0.5);
+            box-shadow: 0 10px 25px rgba(44, 95, 124, 0.5);
         }
 
         .menu-card-icon {
@@ -422,8 +436,32 @@ if (!$utilisateur || !$token) {
         }
 
         .theme-check {
-            color: #667eea;
+            color: #2c5f7c;
             font-size: 16px;
+        }
+
+        /* Responsive pour mobile */
+        @media (max-width: 600px) {
+            .theme-dropdown {
+                position: fixed;
+                top: auto;
+                bottom: 70px;
+                right: 10px;
+                left: 10px;
+                min-width: auto;
+                max-height: 60vh;
+                overflow-y: auto;
+            }
+
+            .theme-option {
+                padding: 12px 15px;
+                font-size: 14px;
+            }
+
+            .theme-preview {
+                width: 35px;
+                height: 25px;
+            }
         }
     </style>
 </head>
@@ -431,11 +469,23 @@ if (!$utilisateur || !$token) {
     <div class="page-wrapper">
         <!-- Barre utilisateur -->
         <div class="user-bar">
-            <div class="user-info">
-                <span>👤 <span class="user-name" id="userName"></span></span>
-                <span class="user-role" id="userRole"></span>
+            <!-- Section gauche : Info utilisateur -->
+            <div class="left-section">
+                <div class="user-info">
+                    <span>👤 <span class="user-name" id="userName"></span></span>
+                    <span class="user-role" id="userRole"></span>
+                </div>
             </div>
-			<div style="display: flex; gap: 10px; align-items: center;">
+            
+            <!-- Section centre : Icône cam.jpg -->
+            <div class="center-section">
+                <a href="img/photo.jpg" title="Voir le monstre">
+                    <img src="img/cam.jpg" width="60" height="60" alt="">
+                </a>
+            </div>
+            
+            <!-- Section droite : Boutons d'action -->
+            <div class="right-section">
                 <!-- Sélecteur de thème discret -->
                 <div class="theme-selector">
                     <button class="theme-button" id="themeButton" title="Changer de thème">
@@ -443,42 +493,40 @@ if (!$utilisateur || !$token) {
                     </button>
                     <div class="theme-dropdown" id="themeDropdown">
                         <div class="theme-option" onclick="changeTheme('purple')">
-                            <div class="theme-preview" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);"></div>
-                            <span class="theme-name">Violet</span>
+                            <div class="theme-preview" style="background: linear-gradient(135deg, #2c5f7c 0%, #3d7a9b 100%);"></div>
+                            <span class="theme-name">Bleu Canard</span>
                             <span class="theme-check" id="check-purple">✓</span>
                         </div>
                         <div class="theme-option" onclick="changeTheme('blue')">
-                            <div class="theme-preview" style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);"></div>
-                            <span class="theme-name">Bleu</span>
+                            <div class="theme-preview" style="background: linear-gradient(135deg, #1e3a5f 0%, #2c5f7c 100%);"></div>
+                            <span class="theme-name">Bleu Marine</span>
                             <span class="theme-check" id="check-blue" style="display: none;">✓</span>
                         </div>
                         <div class="theme-option" onclick="changeTheme('green')">
-                            <div class="theme-preview" style="background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);"></div>
-                            <span class="theme-name">Vert</span>
+                            <div class="theme-preview" style="background: linear-gradient(135deg, #2d5a4e 0%, #3d7a6b 100%);"></div>
+                            <span class="theme-name">Vert Forêt</span>
                             <span class="theme-check" id="check-green" style="display: none;">✓</span>
                         </div>
                         <div class="theme-option" onclick="changeTheme('orange')">
-                            <div class="theme-preview" style="background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);"></div>
-                            <span class="theme-name">Orange</span>
+                            <div class="theme-preview" style="background: linear-gradient(135deg, #8b5a3c 0%, #a67c52 100%);"></div>
+                            <span class="theme-name">Terre de Sienne</span>
                             <span class="theme-check" id="check-orange" style="display: none;">✓</span>
                         </div>
                         <div class="theme-option" onclick="changeTheme('red')">
-                            <div class="theme-preview" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);"></div>
-                            <span class="theme-name">Rose</span>
+                            <div class="theme-preview" style="background: linear-gradient(135deg, #8b4049 0%, #a65963 100%);"></div>
+                            <span class="theme-name">Bordeaux</span>
                             <span class="theme-check" id="check-red" style="display: none;">✓</span>
                         </div>
                         <div class="theme-option" onclick="changeTheme('dark')">
                             <div class="theme-preview" style="background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);"></div>
-                            <span class="theme-name">Sombre</span>
+                            <span class="theme-name">Anthracite</span>
                             <span class="theme-check" id="check-dark" style="display: none;">✓</span>
                         </div>
                     </div>
                 </div>
-                <a href="img/photo.jpg" title="Voir le monstre">
-					<img src="img/cam.jpg" width="60" height="60" alt="" ></a>
-				<a href="change_password.php" class="btn-change-password">🔑 Changer mot de passe</a>
-				<button class="btn-logout" id="logout">🚪 Déconnexion</button>
-			</div>
+                <a href="change_password.php" class="btn-change-password">🔑 Changer mot de passe</a>
+                <button class="btn-logout" id="logout">🚪 Déconnexion</button>
+            </div>
         </div>
 
         <!-- Loader initial -->
@@ -716,7 +764,7 @@ if (!$utilisateur || !$token) {
                         <img src="img/Logo-Entraide-Plus-Iroise.jpg" alt="Logo" style="width: 180px; height: auto; object-fit: contain;">
                     </div>
                     <div style="display: grid; grid-template-columns: 1fr; gap: 12px;">
-                        <div style="color: #667eea; font-size: 24px; font-weight: 800; margin-bottom: 10px;">Gestion des missions</div>
+                        <div style="color: #2c5f7c; font-size: 24px; font-weight: 800; margin-bottom: 10px;">Gestion des missions</div>
                         ${createMenuCard('👤', userFirstName + ' - Vos missions', null, 'vos_missions.php')}
                         ${createMenuCard('🚗⌚', 'Saisie KM et heures', null, 'saisie_km.php')}
                     </div>
@@ -734,7 +782,7 @@ if (!$utilisateur || !$token) {
                         <img src="img/Logo-Entraide-Plus-Iroise.jpg" alt="Logo" style="width: 180px; height: auto; object-fit: contain;">
                     </div>
                     <div style="display: grid; grid-template-columns: 1fr; gap: 12px;">
-                        <div style="color: #667eea; font-size: 24px; font-weight: 800; margin-bottom: 10px;">Autres</div>
+                        <div style="color: #2c5f7c; font-size: 24px; font-weight: 800; margin-bottom: 10px;">Autres</div>
 						${createMenuCard('🚌', 'Stats secteur',   null,'stats_secteurs.php')}
                     </div>
                 `;
@@ -762,7 +810,7 @@ if (!$utilisateur || !$token) {
                         <img src="img/Logo-Entraide-Plus-Iroise.jpg" alt="Logo" style="width: 180px; height: auto; object-fit: contain;">
                     </div>
                     <div style="display: grid; grid-template-columns: 1fr; gap: 12px;">
-                        <div style="color: #667eea; font-size: 24px; font-weight: 800; margin-bottom: 10px;">Gestion des missions</div>
+                        <div style="color: #2c5f7c; font-size: 24px; font-weight: 800; margin-bottom: 10px;">Gestion des missions</div>
                            ${createMenuCard('👤', userFirstName + ' - Vos missions', null, 'vos_missions.php')}
                            ${createMenuCard('🚗⌚', 'Saisie KM et heures', null, 'saisie_km.php')}
                     </div>
@@ -782,7 +830,7 @@ if (!$utilisateur || !$token) {
                         <img src="img/Logo-Entraide-Plus-Iroise.jpg" alt="Logo" style="width: 180px; height: auto; object-fit: contain;">
                     </div>
                     <div style="display: grid; grid-template-columns: 1fr; gap: 12px;">
-                        <div style="color: #667eea; font-size: 24px; font-weight: 800; margin-bottom: 10px;">Autres</div>
+                        <div style="color: #2c5f7c; font-size: 24px; font-weight: 800; margin-bottom: 10px;">Autres</div>
                         ${createMenuCard('🚌', 'Minibus', null, 'minibus.php')}
 						${createMenuCard('🚌', 'Stats secteur',   null,'stats_secteurs.php')}
                     </div>
@@ -830,29 +878,29 @@ if (!$utilisateur || !$token) {
         // Définition des thèmes
         const themes = {
             purple: {
-                gradient: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                primary: '#667eea',
-                secondary: '#764ba2'
+                gradient: 'linear-gradient(135deg, #2c5f7c 0%, #3d7a9b 100%)',
+                primary: '#2c5f7c',
+                secondary: '#3d7a9b'
             },
             blue: {
-                gradient: 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)',
-                primary: '#4facfe',
-                secondary: '#00f2fe'
+                gradient: 'linear-gradient(135deg, #1e3a5f 0%, #2c5f7c 100%)',
+                primary: '#1e3a5f',
+                secondary: '#2c5f7c'
             },
             green: {
-                gradient: 'linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)',
-                primary: '#43e97b',
-                secondary: '#38f9d7'
+                gradient: 'linear-gradient(135deg, #2d5a4e 0%, #3d7a6b 100%)',
+                primary: '#2d5a4e',
+                secondary: '#3d7a6b'
             },
             orange: {
-                gradient: 'linear-gradient(135deg, #fa709a 0%, #fee140 100%)',
-                primary: '#fa709a',
-                secondary: '#fee140'
+                gradient: 'linear-gradient(135deg, #8b5a3c 0%, #a67c52 100%)',
+                primary: '#8b5a3c',
+                secondary: '#a67c52'
             },
             red: {
-                gradient: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)',
-                primary: '#f093fb',
-                secondary: '#f5576c'
+                gradient: 'linear-gradient(135deg, #8b4049 0%, #a65963 100%)',
+                primary: '#8b4049',
+                secondary: '#a65963'
             },
             dark: {
                 gradient: 'linear-gradient(135deg, #2c3e50 0%, #34495e 100%)',
@@ -882,10 +930,10 @@ if (!$utilisateur || !$token) {
             });
             
             // Mettre à jour tous les éléments avec la couleur primaire
-            document.querySelectorAll('[style*="667eea"]').forEach(el => {
+            document.querySelectorAll('[style*="2c5f7c"]').forEach(el => {
                 const style = el.getAttribute('style');
                 if (style) {
-                    el.setAttribute('style', style.replace(/#667eea/g, theme.primary));
+                    el.setAttribute('style', style.replace(/#2c5f7c/g, theme.primary));
                 }
             });
             

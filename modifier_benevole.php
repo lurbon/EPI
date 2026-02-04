@@ -87,8 +87,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['id_benevole'])) {
                 commentaires = :commentaires, debut = :debut, fin = :fin, 
                 lundi = :lundi, mardi = :mardi, mercredi = :mercredi, jeudi = :jeudi, 
                 vendredi = :vendredi, immatriculation = :immatriculation, 
-                chevaux_fiscaux = :chevaux_fiscaux, type = :type, flag_mail = :flag_mail,
-                p_2026 = :p_2026, moyen = :moyen, date_1 = :date_1, observations_1 = :observations_1
+                chevaux_fiscaux = :chevaux_fiscaux, type = :type, flag_mail = :flag_mail
                 WHERE id_benevole = :id_benevole";
         
         $stmt = $conn->prepare($sql);
@@ -114,10 +113,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['id_benevole'])) {
             ':chevaux_fiscaux' => !empty($_POST['chevaux_fiscaux']) ? $_POST['chevaux_fiscaux'] : null,
             ':type' => !empty($_POST['type']) ? $_POST['type'] : null,
             ':flag_mail' => !empty($_POST['flag_mail']) ? $_POST['flag_mail'] : null,
-            ':p_2026' => !empty($_POST['p_2026']) ? $_POST['p_2026'] : null,
-            ':moyen' => !empty($_POST['moyen']) ? $_POST['moyen'] : null,
-            ':date_1' => !empty($_POST['date_1']) ? $_POST['date_1'] : null,
-            ':observations_1' => !empty($_POST['observations_1']) ? $_POST['observations_1'] : null,
             ':id_benevole' => $_POST['id_benevole']
         ]);
         
@@ -619,15 +614,25 @@ if (isset($_GET['success'])) {
                 </div>
             </div>
 
+            <h3>📝 Autres</h3>
+            <div class="form-group">
+                <label for="flag_mail">Utilisation mail</label>
+                <select id="flag_mail" name="flag_mail">
+                    <option value="">-- Non renseigné --</option>
+                    <option value="O" <?php echo ($benevole['flag_mail'] == 'O') ? 'selected' : ''; ?>>O (Oui)</option>
+                    <option value="N" <?php echo ($benevole['flag_mail'] == 'N') ? 'selected' : ''; ?>>N (Non)</option>
+                </select>
+            </div>
+
             <h3>💰 Cotisation</h3>
             <div class="row">
                 <div class="form-group">
-                    <label for="p_2026">Cotisation 2026 (€)</label>
-                    <input type="number" step="0.01" id="p_2026" name="p_2026" value="<?php echo $benevole['p_2026']; ?>">
+                    <label for="p_2026">Cotisation 2026 (€) - Consultation seule</label>
+                    <input type="number" step="0.01" id="p_2026" name="p_2026" value="<?php echo $benevole['p_2026']; ?>" readonly style="background-color: #f0f0f0; cursor: not-allowed;">
                 </div>
                 <div class="form-group">
-                    <label for="moyen">Moyen de paiement</label>
-                    <select id="moyen" name="moyen">
+                    <label for="moyen">Moyen de paiement - Consultation seule</label>
+                    <select id="moyen" name="moyen" disabled style="background-color: #f0f0f0; cursor: not-allowed;">
                         <option value="">-- Non renseigné --</option>
                         <?php foreach($moyensPaiement as $moyen): ?>
                             <option value="<?php echo htmlspecialchars($moyen); ?>" 
@@ -640,23 +645,13 @@ if (isset($_GET['success'])) {
             </div>
 
             <div class="form-group">
-                <label for="date_1">Date de paiement</label>
-                <input type="date" id="date_1" name="date_1" value="<?php echo $benevole['date_1']; ?>">
+                <label for="date_1">Date de paiement - Consultation seule</label>
+                <input type="date" id="date_1" name="date_1" value="<?php echo $benevole['date_1']; ?>" readonly style="background-color: #f0f0f0; cursor: not-allowed;">
             </div>
 
             <div class="form-group">
-                <label for="observations_1">Observations</label>
-                <textarea id="observations_1" name="observations_1"><?php echo htmlspecialchars($benevole['observations_1']); ?></textarea>
-            </div>
-
-            <h3>📝 Autres</h3>
-            <div class="form-group">
-                <label for="flag_mail">Utilisation mail</label>
-                <select id="flag_mail" name="flag_mail">
-                    <option value="">-- Non renseigné --</option>
-                    <option value="O" <?php echo ($benevole['flag_mail'] == 'O') ? 'selected' : ''; ?>>O (Oui)</option>
-                    <option value="N" <?php echo ($benevole['flag_mail'] == 'N') ? 'selected' : ''; ?>>N (Non)</option>
-                </select>
+                <label for="observations_1">Observations - Consultation seule</label>
+                <textarea id="observations_1" name="observations_1" readonly style="background-color: #f0f0f0; cursor: not-allowed;"><?php echo htmlspecialchars($benevole['observations_1']); ?></textarea>
             </div>
 
             <button type="submit" class="btn-submit">💾 Enregistrer les modifications</button>

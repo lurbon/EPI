@@ -72,12 +72,10 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         
         $sql = "INSERT INTO EPI_aide (nom, date_naissance, adresse, code_postal, commune, 
                 tel_fixe, tel_portable, courriel, tel_contact, lien_parente, nom_contact, 
-                secteur, date_debut, date_fin, commentaires, p_2026, moyen, date_paiement, 
-                observation) 
+                secteur, date_debut, date_fin, commentaires) 
                 VALUES (:nom, :date_naissance, :adresse, :code_postal, :commune, 
                 :tel_fixe, :tel_portable, :courriel, :tel_contact, :lien_parente, :nom_contact, 
-                :secteur, :date_debut, :date_fin, :commentaires, :p_2026, :moyen, :date_paiement, 
-                :observation)";
+                :secteur, :date_debut, :date_fin, :commentaires)";
         
         $stmt = $conn->prepare($sql);
         $stmt->execute([
@@ -95,11 +93,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             ':secteur' => !empty($_POST['secteur']) ? $_POST['secteur'] : null,
             ':date_debut' => !empty($_POST['date_debut']) ? $_POST['date_debut'] : null,
             ':date_fin' => !empty($_POST['date_fin']) ? $_POST['date_fin'] : null,
-            ':commentaires' => !empty($_POST['commentaires']) ? $_POST['commentaires'] : null,
-            ':p_2026' => !empty($_POST['p_2026']) ? $_POST['p_2026'] : null,
-            ':moyen' => !empty($_POST['moyen']) ? $_POST['moyen'] : null,
-            ':date_paiement' => !empty($_POST['date_paiement']) ? $_POST['date_paiement'] : null,
-            ':observation' => !empty($_POST['observation']) ? $_POST['observation'] : null
+            ':commentaires' => !empty($_POST['commentaires']) ? $_POST['commentaires'] : null
         ]);
         
         header("Location: " . $_SERVER['PHP_SELF'] . "?success=1");
@@ -532,35 +526,6 @@ $dateJour = date('Y-m-d');
                     <label for="tel_contact">Téléphone contact</label>
                     <input type="tel" id="tel_contact" name="tel_contact" placeholder="02 00 00 00 00">
                 </div>
-            </div>
-
-            <h3>💰 Cotisation</h3>
-            <div class="row">
-                <div class="form-group">
-                    <label for="p_2026">Cotisation 2026 (€)</label>
-                    <input type="number" step="0.01" id="p_2026" name="p_2026" placeholder="Ex: 25.00">
-                </div>
-                <div class="form-group">
-                    <label for="moyen">Moyen de paiement</label>
-                    <select id="moyen" name="moyen">
-                        <option value="">-- Non renseigné --</option>
-                        <?php foreach($moyensPaiement as $moyen): ?>
-                            <option value="<?php echo htmlspecialchars($moyen); ?>">
-                                <?php echo htmlspecialchars($moyen); ?>
-                            </option>
-                        <?php endforeach; ?>
-                    </select>
-                </div>
-            </div>
-
-            <div class="form-group">
-                <label for="date_paiement">Date de paiement</label>
-                <input type="date" id="date_paiement" name="date_paiement">
-            </div>
-
-            <div class="form-group">
-                <label for="observation">Observations</label>
-                <textarea id="observation" name="observation"></textarea>
             </div>
 
             <button type="submit" class="btn-submit">💾 Enregistrer l'aidé</button>
