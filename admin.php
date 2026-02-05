@@ -202,15 +202,6 @@ verifierRole(['admin']);
                 </div>
                 <div class="arrow">→</div>
             </a>
-						
-            <a href="cleanup_sessions_now.php" class="admin-link">
-                <div class="icon">🧹</div>
-                <div class="text">
-                    <div class="title">Nettoyage Sessions</div>
-                    <div class="description">Nettoyer les sessions zombies expirées</div>
-                </div>
-                <div class="arrow">→</div>
-            </a>
         </div>
     </div>
 </body>

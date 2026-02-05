@@ -5,6 +5,19 @@ verifierRole(['admin', 'gestionnaire']);
 
 header('Content-Type: application/json');
 
+// Fonction pour nettoyer les backslashes multiples
+function cleanData($value) {
+    if (is_null($value) || $value === '') {
+        return $value;
+    }
+    // Retirer tous les backslashes d'échappement accumulés
+    while (strpos($value, '\\\\') !== false) {
+        $value = str_replace('\\\\', '\\', $value);
+    }
+    // Puis retirer les backslashes simples d'échappement
+    return stripslashes($value);
+}
+
 $serveur = DB_HOST;
 $utilisateur = DB_USER;
 $motdepasse = DB_PASSWORD;
@@ -22,11 +35,11 @@ try {
         if ($benevole) {
             echo json_encode([
                 'success' => true,
-                'nom' => $benevole['nom'],
-                'adresse' => $benevole['adresse'],
-                'code_postal' => $benevole['code_postal'],
-                'commune' => $benevole['commune'],
-                'secteur' => $benevole['secteur']
+                'nom' => cleanData($benevole['nom']),
+                'adresse' => cleanData($benevole['adresse']),
+                'code_postal' => cleanData($benevole['code_postal']),
+                'commune' => cleanData($benevole['commune']),
+                'secteur' => cleanData($benevole['secteur'])
             ]);
         } else {
             echo json_encode(['success' => false, 'error' => 'Bénévole introuvable']);

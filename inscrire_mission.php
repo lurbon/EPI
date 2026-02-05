@@ -17,7 +17,12 @@ try {
 
 // Fonction pour générer un token sécurisé
 function generateSecureToken($missionId, $benevoleEmail) {
-    $secretKey = 'VOTRE_CLE_SECRETE_A_CHANGER';
+ // Utiliser la clé définie dans wp-config.php, sinon erreur
+    if (!defined('EPI_MISSION_SECRET_KEY')) {
+        error_log("SECURITE: EPI_MISSION_SECRET_KEY non définie dans wp-config.php");
+        die("Erreur de configuration. Contactez l'administrateur.");
+    }
+	    $secretKey = EPI_MISSION_SECRET_KEY;
     return hash('sha256', $missionId . '|' . $benevoleEmail . '|' . $secretKey);
 }
 

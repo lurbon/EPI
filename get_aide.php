@@ -5,6 +5,19 @@ verifierRole(['admin', 'gestionnaire']);
 
 header('Content-Type: application/json');
 
+// Fonction pour nettoyer les backslashes multiples
+function cleanData($value) {
+    if (is_null($value) || $value === '') {
+        return $value;
+    }
+    // Retirer tous les backslashes d'échappement accumulés
+    while (strpos($value, '\\\\') !== false) {
+        $value = str_replace('\\\\', '\\', $value);
+    }
+    // Puis retirer les backslashes simples d'échappement
+    return stripslashes($value);
+}
+
 $serveur = DB_HOST;
 $utilisateur = DB_USER;
 $motdepasse = DB_PASSWORD;
@@ -22,13 +35,13 @@ try {
         if ($aide) {
             echo json_encode([
                 'success' => true,
-                'nom' => $aide['nom'] ?? '',
-                'adresse' => $aide['adresse'] ?? '',
-                'code_postal' => $aide['code_postal'] ?? '',
-                'commune' => $aide['commune'] ?? '',
-                'secteur' => $aide['secteur'] ?? '',
-                'tel_fixe' => $aide['tel_fixe'] ?? '',
-                'tel_portable' => $aide['tel_portable'] ?? ''
+                'nom' => cleanData($aide['nom'] ?? ''),
+                'adresse' => cleanData($aide['adresse'] ?? ''),
+                'code_postal' => cleanData($aide['code_postal'] ?? ''),
+                'commune' => cleanData($aide['commune'] ?? ''),
+                'secteur' => cleanData($aide['secteur'] ?? ''),
+                'tel_fixe' => cleanData($aide['tel_fixe'] ?? ''),
+                'tel_portable' => cleanData($aide['tel_portable'] ?? '')
             ]);
         } else {
             echo json_encode(['success' => false, 'error' => 'Aidé introuvable']);

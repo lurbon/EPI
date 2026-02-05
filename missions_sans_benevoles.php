@@ -2,7 +2,7 @@
 // Charger la configuration WordPress
 require_once('wp-config.php');
 require_once('auth.php');
-verifierRole(['admin']);
+verifierRole(['admin','gestionnaire']);
 
 $serveur = DB_HOST;
 $utilisateur = DB_USER;
@@ -19,7 +19,17 @@ try {
 
 // Fonction pour générer un token sécurisé
 function generateSecureToken($missionId, $benevoleEmail) {
-    $secretKey = 'VOTRE_CLE_SECRETE_A_CHANGER'; // À personnaliser !
+	
+ // Utiliser la clé définie dans wp-config.php, sinon erreur
+    if (!defined('EPI_MISSION_SECRET_KEY')) {
+        error_log("SECURITE: EPI_MISSION_SECRET_KEY non définie dans wp-config.php");
+        die("Erreur de configuration. Contactez l'administrateur.");
+    }
+    $secretKey = EPI_MISSION_SECRET_KEY;
+	
+	
+	
+	
     return hash('sha256', $missionId . '|' . $benevoleEmail . '|' . $secretKey);
 }
 
@@ -53,6 +63,31 @@ function formatPhone($phone) {
         return chunk_split($cleaned, 2, ' ');
     }
     return $phone;
+}
+
+// Fonction pour obtenir les couleurs d'un secteur (cohérence avec liste_missions.php)
+function getSecteurColor($secteur) {
+    // Palette de couleurs pastel distinctives
+    $colors = [
+        ['bg' => '#FFE5E5', 'text' => '#C41E3A'],  // Rouge pastel
+        ['bg' => '#E5F3FF', 'text' => '#0066CC'],  // Bleu pastel
+        ['bg' => '#E8F5E9', 'text' => '#2E7D32'],  // Vert pastel
+        ['bg' => '#FFF3E0', 'text' => '#E65100'],  // Orange pastel
+        ['bg' => '#F3E5F5', 'text' => '#7B1FA2'],  // Violet pastel
+        ['bg' => '#FFF9C4', 'text' => '#F57F17'],  // Jaune pastel
+        ['bg' => '#E0F2F1', 'text' => '#00695C'],  // Turquoise pastel
+        ['bg' => '#FCE4EC', 'text' => '#C2185B'],  // Rose pastel
+        ['bg' => '#E1F5FE', 'text' => '#0277BD'],  // Cyan pastel
+        ['bg' => '#F1F8E9', 'text' => '#558B2F'],  // Vert lime pastel
+        ['bg' => '#FBE9E7', 'text' => '#D84315'],  // Orange brûlé pastel
+        ['bg' => '#EDE7F6', 'text' => '#5E35B1'],  // Indigo pastel
+    ];
+    
+    // Générer un index basé sur le hash du nom du secteur
+    $hash = crc32($secteur);
+    $index = abs($hash) % count($colors);
+    
+    return $colors[$index];
 }
 
 // Récupérer l'email de l'utilisateur connecté (émetteur)
@@ -346,7 +381,7 @@ if (isset($_GET['get_benevoles'])) {
                             FROM EPI_benevole 
                             WHERE courriel IS NOT NULL AND courriel != '' AND flag_mail='O'
                             GROUP BY courriel
-                            ORDER BY secteurs, noms";
+                            ORDER BY noms";
             $stmtBenevoles = $conn->prepare($sqlBenevoles);
             $stmtBenevoles->execute();
         } else if (isset($_GET['secteur'])) {
@@ -614,7 +649,7 @@ $totalMissions = array_sum(array_map('count', $missionsBySecteur));
         .tab {
             padding: 12px 20px;
             background: #f8f9fa;
-            border: none;
+            border: 2px solid transparent;
             border-radius: 8px 8px 0 0;
             cursor: pointer;
             font-size: 14px;
@@ -625,12 +660,13 @@ $totalMissions = array_sum(array_map('count', $missionsBySecteur));
 
         .tab:hover {
             background: #e9ecef;
-            color: #667eea;
+            transform: translateY(-2px);
         }
 
         .tab.active {
-            background: #667eea;
-            color: white;
+            /* Les couleurs sont appliquées via styles inline par secteur */
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
+            font-weight: 700;
         }
 
         .tab-content {
@@ -1119,23 +1155,27 @@ $totalMissions = array_sum(array_map('count', $missionsBySecteur));
         }
 
         .mission-item {
-            background: white;
-            border-left: 4px solid #667eea;
+            background: #fafbff;
+            border: 3px solid #667eea;
+            border-left: 6px solid #667eea;
             padding: 15px;
             border-radius: 8px;
-            margin-bottom: 10px;
+            margin-bottom: 12px;
             cursor: pointer;
             transition: all 0.2s ease;
             position: relative;
+            box-shadow: 0 2px 8px rgba(102, 126, 234, 0.15);
         }
 
         .mission-item:hover {
-            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.2);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.35);
             transform: translateX(5px);
+            border-color: #764ba2;
         }
 
         .mission-item.selected {
             background: #e7f3ff;
+            border-color: #28a745;
             border-left-color: #28a745;
         }
 
@@ -1319,8 +1359,12 @@ $totalMissions = array_sum(array_map('count', $missionsBySecteur));
             <div class="tabs">
                 <?php $first = true; ?>
                 <?php foreach($missionsBySecteur as $secteur => $missions): ?>
+                    <?php $colors = getSecteurColor($secteur); ?>
                     <button class="tab <?php echo $first ? 'active' : ''; ?>" 
-                            onclick="switchTab('<?php echo htmlspecialchars($secteur); ?>')">
+                            onclick="switchTab('<?php echo htmlspecialchars($secteur); ?>')"
+                            data-bg-color="<?php echo $colors['bg']; ?>"
+                            data-text-color="<?php echo $colors['text']; ?>"
+                            style="<?php echo $first ? 'background: ' . $colors['bg'] . '; color: ' . $colors['text'] . '; border: 2px solid ' . $colors['text'] . ';' : ''; ?>">
                         <?php echo htmlspecialchars($secteur); ?> (<?php echo count($missions); ?>)
                     </button>
                     <?php $first = false; ?>
@@ -1430,14 +1474,10 @@ $totalMissions = array_sum(array_map('count', $missionsBySecteur));
             </div>
             
             <?php if (!empty($currentUserEmail)): ?>
-            <div style="background: #e7f3ff; border-left: 4px solid #2196F3; padding: 12px 20px; border-radius: 8px; margin-bottom: 20px;">
-                <small style="color: #1976d2; display: block; margin-bottom: 5px;">
-                    <strong>💡 Information :</strong>
-                </small>
-                <span style="color: #0d47a1; font-size: 13px;">
-                    Vous recevrez une copie de chaque confirmation d'inscription à : 
-                    <strong><?php echo htmlspecialchars($currentUserEmail); ?></strong>
-                </span>
+            <div style="background: #e7f3ff; border-left: 4px solid #2196F3; padding: 12px 20px; border-radius: 8px; margin-bottom: 20px; color: #0d47a1; font-size: 13px;">
+                <strong style="color: #1976d2;">💡 Information :</strong>
+                Vous recevrez une copie de chaque confirmation d'inscription à : 
+                <strong><?php echo htmlspecialchars($currentUserEmail); ?></strong>
             </div>
             <?php endif; ?>
             
@@ -1446,8 +1486,8 @@ $totalMissions = array_sum(array_map('count', $missionsBySecteur));
                 <input type="hidden" name="secteur" id="modal-secteur" value="">
                 
                 <div class="form-group">
-                    <label>Secteur concerné :</label>
-                    <p style="color: #667eea; font-weight: bold; font-size: 16px;" id="modal-secteur-display"></p>
+                    <label style="display: inline; margin-right: 10px;">Secteur concerné :</label>
+                    <span style="color: #667eea; font-weight: bold; font-size: 16px;" id="modal-secteur-display"></span>
                 </div>
 
                 <div class="form-group">
@@ -1504,15 +1544,28 @@ $totalMissions = array_sum(array_map('count', $missionsBySecteur));
         let currentSecteur = '';
 
         function switchTab(secteur) {
+            // Retirer la classe active et réinitialiser le style de tous les onglets
             document.querySelectorAll('.tab').forEach(tab => {
                 tab.classList.remove('active');
+                // Retirer les styles inline pour revenir au style par défaut (gris)
+                tab.style.background = '';
+                tab.style.color = '';
+                tab.style.border = '';
             });
             
             document.querySelectorAll('.tab-content').forEach(content => {
                 content.classList.remove('active');
             });
             
-            event.target.classList.add('active');
+            // Activer l'onglet cliqué et appliquer ses couleurs
+            const activeTab = event.target;
+            activeTab.classList.add('active');
+            const bgColor = activeTab.getAttribute('data-bg-color');
+            const textColor = activeTab.getAttribute('data-text-color');
+            activeTab.style.background = bgColor;
+            activeTab.style.color = textColor;
+            activeTab.style.border = '2px solid ' + textColor;
+            
             document.getElementById('tab-' + secteur).classList.add('active');
         }
 

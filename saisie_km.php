@@ -374,16 +374,17 @@ try {
 
         .mission-card {
             background: white;
-            border: 2px solid #e9ecef;
+            border: 4px solid #667eea;
             border-radius: 12px;
             padding: 25px;
             transition: all 0.3s ease;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
         }
 
         .mission-card:hover {
-            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+            box-shadow: 0 8px 30px rgba(102, 126, 234, 0.5);
             transform: translateY(-2px);
+            border-color: #764ba2;
         }
 
         .mission-header {
