@@ -2,15 +2,11 @@
 /**
  * API pour Excel
  *
- * Cette API retourne les donnees des tables EPI en format JSON ou CSV
+ * Cette API retourne les donnees des tables EPI en format CSV
  * compatible avec Excel
  *
  * Authentification:
- *   - Par cle API: &api_key=VOTRE_CLE
- *
- * Formats:
- *   &format=csv   - Retourne un fichier CSV (tableau Excel)
- *   &format=json  - Retourne du JSON (par defaut)
+ *   - Par cle API: &api_key=VOTRE_CLE (definie dans wp-config.php : API_EXCEL_KEY)
  *
  * Utilisation:
  *   ?table=benevoles    - Retourne tous les benevoles
@@ -28,12 +24,16 @@
 require_once('wp-config.php');
 
 // ============================================================
-// CONFIGURATION DE LA CLE API
+// CLE API : definie dans wp-config.php (constante API_EXCEL_KEY)
 // ============================================================
-define('API_EXCEL_KEY', 'epi_8707d42e1ca1be5af0ae00323e46ead4');
+if (!defined('API_EXCEL_KEY')) {
+    http_response_code(500);
+    header('Content-Type: application/json; charset=utf-8');
+    echo json_encode(['success' => false, 'error' => 'Configuration serveur incomplete']);
+    exit();
+}
 
 // Parametres
-$format = isset($_GET['format']) ? strtolower($_GET['format']) : 'json';
 $table = isset($_GET['table']) ? $_GET['table'] : '';
 $secteur = isset($_GET['secteur']) ? $_GET['secteur'] : '';
 $actifs_only = isset($_GET['actifs_only']) && $_GET['actifs_only'] == '1';
@@ -79,6 +79,7 @@ try {
     $conn = new PDO("mysql:host=$serveur;dbname=$base;charset=utf8mb4", $utilisateur, $motdepasse);
     $conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 } catch(PDOException $e) {
+    error_log("api_excel_tables: Erreur connexion BDD: " . $e->getMessage());
     http_response_code(500);
     header('Content-Type: application/json; charset=utf-8');
     echo json_encode([
@@ -236,6 +237,20 @@ function getMissions($conn, $secteur = '', $annee = null) {
 }
 
 /**
+ * Nettoie une valeur CSV pour empecher l'injection de formules Excel
+ * Les cellules commencant par =, +, -, @, \t ou \r peuvent executer des commandes
+ */
+function sanitizeCSVValue($value) {
+    if (is_string($value) && strlen($value) > 0) {
+        $firstChar = $value[0];
+        if (in_array($firstChar, ['=', '+', '-', '@', "\t", "\r"])) {
+            $value = "'" . $value;
+        }
+    }
+    return $value;
+}
+
+/**
  * Exporte les donnees en CSV
  */
 function exportCSV($data, $filename) {
@@ -253,29 +268,14 @@ function exportCSV($data, $filename) {
         // Ecrire les en-tetes (noms des colonnes)
         fputcsv($output, array_keys($data[0]), ';');
 
-        // Ecrire les donnees
+        // Ecrire les donnees en nettoyant chaque cellule
         foreach ($data as $row) {
-            fputcsv($output, $row, ';');
+            $cleanRow = array_map('sanitizeCSVValue', $row);
+            fputcsv($output, $cleanRow, ';');
         }
     }
 
     fclose($output);
-    exit();
-}
-
-/**
- * Exporte les donnees en JSON
- */
-function exportJSON($data, $table) {
-    header('Content-Type: application/json; charset=utf-8');
-    header('Access-Control-Allow-Origin: *');
-
-    echo json_encode([
-        'success' => true,
-        'table' => $table,
-        'count' => count($data),
-        'data' => $data
-    ], JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
     exit();
 }
 
@@ -301,40 +301,35 @@ try {
             break;
 
         default:
-            // Documentation
+            // Documentation (sans exposer de cle API)
             header('Content-Type: application/json; charset=utf-8');
             echo json_encode([
                 'success' => true,
                 'message' => 'API Excel - Documentation',
-                'cle_api' => 'test123',
                 'exemples' => [
-                    'Benevoles (CSV)' => '?table=benevoles&format=csv&api_key=test123',
-                    'Aides (CSV)' => '?table=aides&format=csv&api_key=test123',
-                    'Missions (CSV)' => '?table=missions&format=csv&api_key=test123',
-                    'Missions 2026 (CSV)' => '?table=missions&annee=2026&format=csv&api_key=test123',
-                    'Benevoles (JSON)' => '?table=benevoles&format=json&api_key=test123'
+                    'Benevoles' => '?table=benevoles&api_key=VOTRE_CLE',
+                    'Aides' => '?table=aides&api_key=VOTRE_CLE',
+                    'Missions' => '?table=missions&api_key=VOTRE_CLE',
+                    'Missions 2026' => '?table=missions&annee=2026&api_key=VOTRE_CLE'
                 ],
-                'formats' => [
-                    'csv' => 'Fichier CSV telecharge directement (ouvrir avec Excel)',
-                    'json' => 'Donnees JSON (par defaut)'
+                'filtres' => [
+                    'secteur' => '&secteur=NomSecteur',
+                    'actifs_only' => '&actifs_only=1',
+                    'annee' => '&annee=2026 (missions uniquement)'
                 ]
             ], JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
             exit();
     }
 
-    // Exporter selon le format demande
-    if ($format === 'csv') {
-        exportCSV($data, $filename);
-    } else {
-        exportJSON($data, $table);
-    }
+    // Exporter en CSV
+    exportCSV($data, $filename);
 
 } catch(PDOException $e) {
+    error_log("api_excel_tables: Erreur requete: " . $e->getMessage());
     http_response_code(500);
     header('Content-Type: application/json; charset=utf-8');
     echo json_encode([
         'success' => false,
-        'error' => 'Erreur: ' . $e->getMessage()
+        'error' => 'Erreur interne du serveur'
     ]);
 }
-?>
