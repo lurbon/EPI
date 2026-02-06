@@ -194,55 +194,59 @@ function formaterDuree($duree) {
         }
 
         .container {
-            max-width: 1600px;
+            max-width: 1400px;
             margin: 0 auto;
-            padding-top: 30px;
+            padding: 20px;
         }
 
         .header-card {
-            background: rgba(255, 255, 255, 0.95);
+            background: white;
             border-radius: 20px;
             padding: 30px;
             margin-bottom: 30px;
-            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
         }
 
         h1 {
             color: #333;
+            margin-bottom: 25px;
             font-size: 2rem;
-            margin-bottom: 20px;
-            display: flex;
-            align-items: center;
-            gap: 15px;
+            text-align: center;
         }
 
         .filters {
             display: flex;
             gap: 20px;
+            align-items: flex-end;
             flex-wrap: wrap;
-            align-items: center;
         }
 
         .filter-group {
             display: flex;
             flex-direction: column;
-            gap: 5px;
+            gap: 8px;
+            flex: 1;
+            min-width: 200px;
         }
 
         .filter-group label {
             font-weight: 600;
             color: #555;
-            font-size: 0.85rem;
+            font-size: 0.9rem;
         }
 
         .filter-group select {
-            padding: 10px 15px;
+            padding: 12px 15px;
             border: 2px solid #e0e0e0;
             border-radius: 10px;
             font-size: 1rem;
-            min-width: 200px;
+            background: white;
             cursor: pointer;
             transition: all 0.3s ease;
+        }
+
+        .filter-group select:hover {
+            border-color: #667eea;
         }
 
         .filter-group select:focus {
@@ -251,135 +255,24 @@ function formaterDuree($duree) {
             box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
         }
 
-        .btn {
-            padding: 12px 25px;
-            border: none;
-            border-radius: 10px;
-            font-size: 1rem;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            text-decoration: none;
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        .btn-primary {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-        }
-
-        .btn-primary:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 5px 20px rgba(102, 126, 234, 0.4);
-        }
-
-        .btn-secondary {
-            background: #f0f0f0;
-            color: #333;
-        }
-
-        .btn-secondary:hover {
-            background: #e0e0e0;
-        }
-
-        .stats-table-container {
-            background: rgba(255, 255, 255, 0.95);
-            border-radius: 20px;
-            padding: 20px;
-            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
-            overflow-x: auto;
-        }
-
-        table {
-            width: 100%;
-            border-collapse: collapse;
-        }
-
-        th, td {
-            padding: 12px 8px;
-            text-align: center;
-            border-bottom: 1px solid #eee;
-        }
-
-        th {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            font-weight: 600;
-            font-size: 0.85rem;
-            position: sticky;
-            top: 0;
-        }
-
-        th:first-child {
-            text-align: left;
-            padding-left: 15px;
-            border-radius: 10px 0 0 0;
-        }
-
-        th:last-child {
-            border-radius: 0 10px 0 0;
-        }
-
-        td:first-child {
-            text-align: left;
-            padding-left: 15px;
-            font-weight: 600;
-            color: #333;
-            white-space: nowrap;
-        }
-
-        tr:hover {
-            background: rgba(102, 126, 234, 0.05);
-        }
-
-        .month-cell {
-            font-size: 0.85rem;
-        }
-
-        .km-value {
-            color: #2196F3;
-            font-weight: 600;
-        }
-
-        .duree-value {
-            color: #4CAF50;
-            font-size: 0.8rem;
-        }
-
-        .total-row {
-            background: rgba(102, 126, 234, 0.1) !important;
-            font-weight: 700;
-        }
-
-        .total-row td {
-            border-top: 2px solid #667eea;
-        }
-
-        .cell-content {
-            display: flex;
-            flex-direction: column;
-            gap: 2px;
-        }
-
-        .no-data {
-            color: #ccc;
-        }
-
         .summary-cards {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
             gap: 20px;
             margin-bottom: 30px;
         }
 
         .summary-card {
-            background: rgba(255, 255, 255, 0.95);
-            border-radius: 15px;
-            padding: 20px;
+            background: white;
+            border-radius: 20px;
+            padding: 25px;
             text-align: center;
-            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.1);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            transition: transform 0.3s ease;
+        }
+
+        .summary-card:hover {
+            transform: translateY(-5px);
         }
 
         .summary-card .icon {
@@ -389,8 +282,9 @@ function formaterDuree($duree) {
 
         .summary-card .value {
             font-size: 2rem;
-            font-weight: 700;
-            color: #333;
+            font-weight: bold;
+            color: #667eea;
+            margin-bottom: 5px;
         }
 
         .summary-card .label {
@@ -398,8 +292,85 @@ function formaterDuree($duree) {
             font-size: 0.9rem;
         }
 
-        .export-btn {
-            margin-top: 15px;
+        .stats-table-container {
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            overflow-x: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 1200px;
+        }
+
+        th, td {
+            padding: 15px 10px;
+            text-align: left;
+            border-bottom: 1px solid #f0f0f0;
+        }
+
+        th {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            font-weight: 600;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+            text-align: center;
+        }
+
+        th:first-child {
+            border-radius: 10px 0 0 0;
+            text-align: left;
+        }
+
+        th:last-child {
+            border-radius: 0 10px 0 0;
+        }
+
+        td:first-child {
+            font-weight: 600;
+            color: #333;
+            background: #f8f9fa;
+        }
+
+        .month-cell {
+            text-align: center;
+        }
+
+        .cell-content {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        .km-value {
+            font-weight: 600;
+            color: #667eea;
+            font-size: 0.95rem;
+        }
+
+        .duree-value {
+            color: #999;
+            font-size: 0.85rem;
+        }
+
+        .no-data {
+            color: #ccc;
+            font-size: 1.2rem;
+        }
+
+        .total-row {
+            background: linear-gradient(135deg, rgba(102, 126, 234, 0.1), rgba(118, 75, 162, 0.1));
+            font-weight: bold;
+        }
+
+        .total-row td {
+            border-top: 3px solid #667eea;
+            padding: 20px 10px;
         }
 
         @media print {
@@ -407,39 +378,47 @@ function formaterDuree($duree) {
                 background: white;
                 padding: 0;
             }
-            .back-link, .filters, .btn {
-                display: none !important;
+
+            .back-link,
+            .filters {
+                display: none;
             }
-            .header-card, .stats-table-container {
+
+            .container {
+                padding: 0;
+            }
+
+            .header-card,
+            .stats-table-container {
                 box-shadow: none;
                 border: 1px solid #ddd;
             }
         }
 
         @media (max-width: 768px) {
-            .back-link {
-                top: 15px;
-                left: 15px;
-                width: 50px;
-                height: 50px;
-                font-size: 20px;
+            .filters {
+                flex-direction: column;
             }
 
-            .back-link::before {
-                left: 60px;
-                font-size: 12px;
-                padding: 6px 10px;
+            .filter-group {
+                width: 100%;
             }
 
             h1 {
                 font-size: 1.5rem;
             }
-            .filters {
-                flex-direction: column;
-                align-items: stretch;
+
+            .summary-cards {
+                grid-template-columns: 1fr;
             }
-            .filter-group select {
-                width: 100%;
+
+            .stats-table-container {
+                padding: 15px;
+            }
+
+            th, td {
+                padding: 10px 5px;
+                font-size: 0.85rem;
             }
         }
     </style>
@@ -474,16 +453,6 @@ function formaterDuree($duree) {
                             </option>
                         <?php endforeach; ?>
                     </select>
-                </div>
-
-                <div class="filter-group" style="justify-content: flex-end;">
-                    <label>&nbsp;</label>
-                    <button type="button" class="btn btn-primary" onclick="exporterCSV()">
-                        📊 Exporter CSV
-                    </button>
-                    <button type="button" class="btn btn-secondary" onclick="window.print()">
-                        🖨️ Imprimer
-                    </button>
                 </div>
             </form>
         </div>
@@ -623,19 +592,5 @@ function formaterDuree($duree) {
             <?php endif; ?>
         </div>
     </div>
-
-    <script>
-        function exporterCSV() {
-            const annee = document.getElementById('annee').value;
-            const benevole = document.getElementById('benevole').value;
-            
-            let url = 'export_stats_benevoles_csv.php?annee=' + annee;
-            if (benevole) {
-                url += '&benevole=' + encodeURIComponent(benevole);
-            }
-            
-            window.location.href = url;
-        }
-    </script>
 </body>
 </html>

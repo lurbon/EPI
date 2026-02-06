@@ -298,17 +298,17 @@ function formaterDuree($duree) {
 
         .summary-cards {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 15px;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
             margin-bottom: 30px;
         }
 
         .summary-card {
             background: white;
-            border-radius: 12px;
-            padding: 15px;
-            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+            border-radius: 20px;
+            padding: 25px;
             text-align: center;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
             transition: transform 0.3s ease;
         }
 
@@ -317,20 +317,20 @@ function formaterDuree($duree) {
         }
 
         .summary-card .icon {
-            font-size: 2rem;
-            margin-bottom: 8px;
+            font-size: 2.5rem;
+            margin-bottom: 10px;
         }
 
         .summary-card .value {
-            font-size: 1.5rem;
+            font-size: 2rem;
             font-weight: bold;
             color: #667eea;
-            margin-bottom: 3px;
+            margin-bottom: 5px;
         }
 
         .summary-card .label {
             color: #666;
-            font-size: 0.85rem;
+            font-size: 0.9rem;
         }
 
         .stats-table-container {
@@ -564,6 +564,9 @@ function formaterDuree($duree) {
             .filter-group select {
                 width: 100%;
             }
+            .summary-cards {
+                grid-template-columns: 1fr;
+            }
         }
     </style>
 </head>
@@ -597,18 +600,6 @@ function formaterDuree($duree) {
                             </option>
                         <?php endforeach; ?>
                     </select>
-                </div>
-
-                <div class="filter-group" style="justify-content: flex-end;">
-                    <label>&nbsp;</label>
-                    <div style="display: flex; gap: 10px;">
-                        <button type="button" class="btn btn-secondary" onclick="exporterExcel()">
-                            📊 Exporter
-                        </button>
-                        <button type="button" class="btn btn-secondary" onclick="window.print()">
-                            🖨️ Imprimer
-                        </button>
-                    </div>
                 </div>
             </form>
         </div>
@@ -811,8 +802,8 @@ function formaterDuree($duree) {
                 📊 Répartition des Missions par Secteur (<?php echo $annee; ?>)
             </h2>
             
-            <div style="max-width: 600px; margin: 0 auto; display: flex; justify-content: center; align-items: center;">
-                <div id="pieChart" style="width: 100%; height: auto;">
+            <div style="max-width: 600px; margin: 0 auto; display: flex; justify-content: center; align-items: center; text-align: center;">
+                <div id="pieChart" style="width: 100%; height: auto; display: inline-block; margin: 0 auto;">
                     <!-- Le graphique SVG sera généré ici -->
                 </div>
             </div>
@@ -885,7 +876,7 @@ function formaterDuree($duree) {
         const centerY = size / 2;
         const radius = size / 2 - 20;
         
-        let svg = '<svg width="' + size + '" height="' + size + '" viewBox="0 0 ' + size + ' ' + size + '" style="max-width: 100%; height: auto;">';
+        let svg = '<svg width="' + size + '" height="' + size + '" viewBox="0 0 ' + size + ' ' + size + '" style="max-width: 100%; height: auto; display: block; margin: 0 auto;">';
         
         let currentAngle = -90; // Commencer en haut
         

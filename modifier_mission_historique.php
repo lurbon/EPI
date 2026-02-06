@@ -757,7 +757,7 @@ if (isset($_GET['success'])) {
         <h1>✏️ Modifier Mission Historique</h1>
 
         <div class="info-notice" style="background: #ffe6e6; border-left: 4px solid #dc3545; color: #721c24;">
-            ⚠️ <strong>MODE HISTORIQUE :</strong> Cette page permet de modifier TOUTES les missions, y compris les missions passées. À utiliser avec précaution ! Pour la modification normale (mois courant uniquement), utilisez <a href="modifier_mission.php" style="color: #0056b3; text-decoration: underline;">modifier_mission.php</a>.
+            ⚠️ <strong>MODE HISTORIQUE :</strong> Cette page permet de modifier TOUTES les missions, y compris les missions passées. À utiliser avec précaution ! Pour la modification normale (mois courant et ultérieur uniquement), utilisez <a href="modifier_mission.php" style="color: #0056b3; text-decoration: underline;">modifier_mission.php</a>.
         </div>
 
         <?php if($message): ?>

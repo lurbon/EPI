@@ -19,17 +19,13 @@ try {
     die("Erreur de connexion : " . $e->getMessage());
 }
 
-// Calculer le premier jour du mois courant
-$premierJourMoisCourant = date('Y-m-01');
-
-// Récupérer les missions futures pour le filtre
+// Récupérer toutes les missions pour le filtre (sans restriction de date)
 $missions = [];
 try {
     $stmt = $conn->prepare("SELECT id_mission, date_mission, heure_rdv, aide, benevole, nature_intervention 
                            FROM EPI_mission 
-                           WHERE date_mission >= :date_limite 
                            ORDER BY date_mission DESC, heure_rdv DESC");
-    $stmt->execute([':date_limite' => $premierJourMoisCourant]);
+    $stmt->execute();
     $missions = $stmt->fetchAll(PDO::FETCH_ASSOC);
 } catch(PDOException $e) {
     $error = "Erreur : " . $e->getMessage();
