@@ -777,7 +777,7 @@ if (isset($_GET['success'])) {
         <h1>✏️ Modifier une Mission</h1>
 
         <div class="info-notice">
-            ℹ️ Seules les missions du mois courant (à partir du <?php echo date('d/m/Y', strtotime($premierJourMoisCourant)); ?>) et des mois futurs peuvent être modifiées.
+            ℹ️ Seules les missions du mois courant et des mois futurs peuvent être modifiées.
         </div>
 
         <?php if($message): ?>

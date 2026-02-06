@@ -484,10 +484,10 @@ $dateJour = date('Y-m-d');
     </style>
 </head>
 <body>
-    <a href="dashboard.php" class="back-link" title="Retour au tableau de bord">🏠</a>
+    <a href="dashboard.php" class="back-link">🏠</a>
 
     <div class="container">
-        <h1>👤 Nouveau Bénévole - Formulaire Complet</h1>
+        <h1>👤 Nouveau Bénévole </h1>
         
         <?php if($message): ?>
             <div class="message <?php echo $messageType; ?>">

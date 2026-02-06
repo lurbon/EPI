@@ -27,7 +27,7 @@ verifierRole(['admin']);
             align-items: center;
         }
 
-        .back-link {
+		        .back-link {
             position: fixed;
             top: 30px;
             left: 30px;
@@ -41,12 +41,43 @@ verifierRole(['admin']);
             justify-content: center;
             text-decoration: none;
             font-size: 24px;
+            font-weight: 600;
             box-shadow: 0 8px 25px rgba(102, 126, 234, 0.5);
             transition: all 0.3s ease;
             z-index: 1000;
-            border: none;
-            cursor: pointer;
+            border: 3px solid #dc3545;
         }
+
+        .back-link:hover {
+            transform: translateY(-5px) scale(1.1);
+            box-shadow: 0 12px 35px rgba(102, 126, 234, 0.7);
+            border-color: #c82333;
+        }
+
+        .back-link:active {
+            transform: translateY(-2px) scale(1.05);
+        }
+
+        /* Tooltip au survol */
+        .back-link::before {
+            content: 'Retour au tableau de bord';
+            position: absolute;
+            left: 70px;
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 14px;
+            white-space: nowrap;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease;
+        }
+
+        .back-link:hover::before {
+            opacity: 1;
+        }
+
 
         .back-link:hover {
             transform: translateY(-5px) scale(1.1);

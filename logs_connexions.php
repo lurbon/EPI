@@ -110,8 +110,7 @@ $utilisateursConnectes = $connectesData['connectes'] ?? 0;
             padding: 20px;
         }
 
-        /* ---------- Bouton retour ---------- */
-        .back-link {
+		        .back-link {
             position: fixed;
             top: 30px;
             left: 30px;
@@ -129,18 +128,22 @@ $utilisateursConnectes = $connectesData['connectes'] ?? 0;
             box-shadow: 0 8px 25px rgba(102, 126, 234, 0.5);
             transition: all 0.3s ease;
             z-index: 1000;
-            border: none;
-            cursor: pointer;
+            border: 3px solid #dc3545;
         }
+
         .back-link:hover {
             transform: translateY(-5px) scale(1.1);
             box-shadow: 0 12px 35px rgba(102, 126, 234, 0.7);
+            border-color: #c82333;
         }
+
         .back-link:active {
             transform: translateY(-2px) scale(1.05);
         }
+
+        /* Tooltip au survol */
         .back-link::before {
-            content: 'Retour à l\'admin';
+            content: 'Retour au tableau de bord';
             position: absolute;
             left: 70px;
             background: rgba(0, 0, 0, 0.8);
@@ -153,9 +156,11 @@ $utilisateursConnectes = $connectesData['connectes'] ?? 0;
             pointer-events: none;
             transition: opacity 0.3s ease;
         }
+
         .back-link:hover::before {
             opacity: 1;
         }
+
 
         /* ---------- Conteneur principal ---------- */
         .container {
@@ -391,7 +396,7 @@ $utilisateursConnectes = $connectesData['connectes'] ?? 0;
     </style>
 </head>
 <body>
-    <button onclick="window.location.href='admin.php'" class="back-link" title="Retour à l'admin">🏠</button>
+    <button onclick="window.location.href='dashboard.php'" class="back-link">🏠</button>
 
     <div class="container">
         <h1>📊 Logs de Connexions</h1>
