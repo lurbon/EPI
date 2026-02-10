@@ -90,6 +90,50 @@ function getSecteurColor($secteur) {
     return $colors[$index];
 }
 
+/**
+ * Enregistre un envoi de missions dans l'historique
+ */
+function enregistrerHistoriqueEnvoi($conn, $emailEmetteur, $missionsIds, $destinataires, $secteur = '', $sujetEmail = '') {
+    try {
+        // Convertir les tableaux en JSON
+        $missionsJson = json_encode($missionsIds, JSON_UNESCAPED_UNICODE);
+        $destinatairesJson = json_encode($destinataires, JSON_UNESCAPED_UNICODE);
+        
+        // Compter les éléments
+        $nbMissions = count($missionsIds);
+        $nbDestinataires = count($destinataires);
+        
+        // Préparer la requête d'insertion
+        $sql = "INSERT INTO EPI_envoi 
+                (email_emetteur, date_envoi, missions_ids, destinataires, nb_missions, nb_destinataires, secteur, sujet_email) 
+                VALUES 
+                (:email_emetteur, NOW(), :missions_ids, :destinataires, :nb_missions, :nb_destinataires, :secteur, :sujet_email)";
+        
+        $stmt = $conn->prepare($sql);
+        $result = $stmt->execute([
+            'email_emetteur' => $emailEmetteur,
+            'missions_ids' => $missionsJson,
+            'destinataires' => $destinatairesJson,
+            'nb_missions' => $nbMissions,
+            'nb_destinataires' => $nbDestinataires,
+            'secteur' => $secteur,
+            'sujet_email' => $sujetEmail
+        ]);
+        
+        if ($result) {
+            $historiqueId = $conn->lastInsertId();
+            error_log("✅ Historique envoi créé - ID: $historiqueId - Émetteur: $emailEmetteur - $nbMissions missions vers $nbDestinataires destinataires");
+            return $historiqueId;
+        }
+        
+        return false;
+        
+    } catch(PDOException $e) {
+        error_log("❌ Erreur enregistrement historique envoi: " . $e->getMessage());
+        return false;
+    }
+}
+
 // Récupérer l'email de l'utilisateur connecté (émetteur)
 $currentUserEmail = '';
 
@@ -181,6 +225,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['send_email'])) {
             
             // URL de base pour les inscriptions (à adapter)
             $baseUrl = 'http://' . $_SERVER['HTTP_HOST'] . dirname($_SERVER['PHP_SELF']);
+            
+            // ⭐ NOUVEAU : Tracker les emails réussis
+            $successfulEmails = [];
             
             foreach ($selectedBenevoles as $email) {
                 if (!filter_var($email, FILTER_VALIDATE_EMAIL)) continue;
@@ -350,8 +397,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['send_email'])) {
                 // Forcer le Return-Path pour éviter mail-out.cluster127.hosting.ovh.net
                 $additional_params = "-f noreply@{$domaine}";
                 
-                mail($email, $subject, $fullMessage, $headers, $additional_params);
-                $emailCount++;
+                $mailResult = mail($email, $subject, $fullMessage, $headers, $additional_params);
+                
+                // ⭐ NOUVEAU : Tracker les emails réussis
+                if ($mailResult) {
+                    $emailCount++;
+                    $successfulEmails[] = $email;
+                    error_log("✅ Email envoyé à: " . $email);
+                } else {
+                    error_log("❌ Échec envoi email à: " . $email);
+                }
+            }
+            
+            // ⭐ NOUVEAU : Enregistrer dans l'historique si au moins un email a été envoyé
+            if ($emailCount > 0 && count($successfulEmails) > 0) {
+                enregistrerHistoriqueEnvoi(
+                    $conn, 
+                    $currentUserEmail,      // Email de l'émetteur
+                    $selectedMissions,      // IDs des missions (array)
+                    $successfulEmails,      // Emails des destinataires qui ont reçu (array)
+                    $secteur,               // Secteur
+                    $subject                // Sujet de l'email
+                );
             }
             
             $emailSent = true;

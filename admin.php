@@ -233,6 +233,15 @@ verifierRole(['admin']);
                 </div>
                 <div class="arrow">→</div>
             </a>
+
+            <a href="historique_envois.php" class="admin-link">
+                <div class="icon">📧</div>
+                <div class="text">
+                    <div class="title">Historique Envois Missions</div>
+                    <div class="description">Suivi des emails envoyés aux bénévoles</div>
+                </div>
+                <div class="arrow">→</div>
+            </a>
         </div>
     </div>
 </body>

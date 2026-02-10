@@ -579,7 +579,7 @@ try {
                         <?php foreach($benevoles as $benevole): ?>
                             <tr class="<?php echo !empty($benevole['fin']) ? 'benevole-inactif' : ''; ?>" onclick="showDetails(<?php echo htmlspecialchars(json_encode($benevole), ENT_QUOTES, 'UTF-8'); ?>)">
                                 <td>
-                                    <strong class="<?php echo (empty($benevole['p_2026']) || $benevole['p_2026'] == 0) ? 'nom-sans-cotisation' : ''; ?>">
+                                    <strong class="<?php echo (empty($benevole['p_2026']) && $benevole['p_2026'] !== 0 && $benevole['p_2026'] !== '0') ? 'nom-sans-cotisation' : ''; ?>">
                                         <?php echo htmlspecialchars($benevole['nom']); ?>
                                     </strong>
                                 </td>

@@ -557,7 +557,7 @@ try {
                         <?php foreach($aides as $aide): ?>
                             <tr class="<?php echo !empty($aide['date_fin']) ? 'aide-inactif' : ''; ?>" onclick="showDetails(<?php echo htmlspecialchars(json_encode($aide), ENT_QUOTES, 'UTF-8'); ?>)">
                                 <td>
-                                    <strong class="<?php echo (empty($aide['p_2026']) || $aide['p_2026'] == 0) ? 'nom-sans-cotisation' : ''; ?>">
+                                    <strong class="<?php echo (empty($aide['p_2026']) && $aide['p_2026'] !== 0 && $aide['p_2026'] !== '0') ? 'nom-sans-cotisation' : ''; ?>">
                                         <?php echo htmlspecialchars($aide['nom']); ?>
                                     </strong>
                                 </td>
