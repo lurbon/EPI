@@ -21,8 +21,9 @@ try {
     die("Erreur de connexion : " . $e->getMessage());
 }
 
-// Déterminer si l'utilisateur est un bénévole (non admin)
-$isBenevole = hasRole('benevole') && !hasRole('admin') && !hasRole('gestionnaire');
+// Déterminer si l'utilisateur doit voir uniquement ses missions (chauffeurs et bénévoles)
+// Seuls admin et gestionnaire voient toutes les missions
+$isBenevole = !hasRole('admin') && !hasRole('gestionnaire');
 $idsBenevoleConnecte = [];
 
 if ($isBenevole) {
@@ -33,6 +34,15 @@ if ($isBenevole) {
         $stmtBen = $conn->prepare("SELECT id_benevole FROM EPI_benevole WHERE courriel = :email");
         $stmtBen->execute([':email' => $userEmail]);
         $idsBenevoleConnecte = $stmtBen->fetchAll(PDO::FETCH_COLUMN);
+        
+        // Debug : décommenter pour voir les IDs trouvés dans les logs PHP
+        // error_log("Bénévole connecté - Email: $userEmail - IDs trouvés: " . implode(', ', $idsBenevoleConnecte));
+        
+        // Si aucun ID trouvé, afficher un message à l'utilisateur
+        if (empty($idsBenevoleConnecte) && empty($message)) {
+            $message = "Attention : Aucune fiche trouvée avec l'email : $userEmail. Contactez un administrateur.";
+            $messageType = "error";
+        }
     }
 }
 
@@ -54,7 +64,7 @@ function dateEnFrancais($date) {
 // Traitement de la mise à jour
 if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['id_mission'])) {
     try {
-        // Sécurité : un bénévole ne peut modifier que ses propres missions
+        // Sécurité : chauffeurs et bénévoles ne peuvent modifier que leurs propres missions
         if ($isBenevole) {
             $stmtCheck = $conn->prepare("SELECT id_benevole FROM EPI_mission WHERE id_mission = :id_mission");
             $stmtCheck->execute([':id_mission' => $_POST['id_mission']]);
@@ -127,7 +137,7 @@ try {
             AND km_saisi IS NULL";    
     $params = [];
 
-    // Filtre bénévole : ne voit que ses propres missions
+    // Filtre : chauffeurs et bénévoles ne voient que leurs propres missions
     // (un couple peut partager le même email → plusieurs id_benevole)
     if ($isBenevole && !empty($idsBenevoleConnecte)) {
         $placeholders = [];
@@ -137,7 +147,7 @@ try {
         }
         $sql .= " AND id_benevole IN (" . implode(', ', $placeholders) . ")";
     } elseif ($isBenevole && empty($idsBenevoleConnecte)) {
-        // Bénévole non trouvé en base → aucune mission à afficher
+        // Chauffeur/bénévole non trouvé en base → aucune mission à afficher
         $sql .= " AND 1=0";
     }
 
@@ -152,6 +162,9 @@ try {
     $stmt = $conn->prepare($sql);
     $stmt->execute($params);
     $missions = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    
+    // Debug : afficher le nombre de missions trouvées (pour diagnostic)
+    // error_log("Missions trouvées pour bénévole : " . count($missions) . " | isBenevole: " . ($isBenevole ? 'OUI' : 'NON') . " | IDs: " . implode(',', $idsBenevoleConnecte));
     
 } catch(PDOException $e) {
     $error = "Erreur : " . $e->getMessage();
