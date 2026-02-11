@@ -85,7 +85,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
 
         http_response_code(401);
-        echo json_encode(['error' => true, 'message' => 'Identifiants incorrects']);
+        echo json_encode(['error' => true, 'message' => 'Utilisateur introuvable dans la base de données']);
         exit();
     }
 
@@ -125,8 +125,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             // Ignorer les erreurs de logging
         }
 
+        // DEBUG TEMPORAIRE - format du hash détecté
+        $hashPrefix = substr($storedHash, 0, 4);
         http_response_code(401);
-        echo json_encode(['error' => true, 'message' => 'Identifiants incorrects']);
+        echo json_encode(['error' => true, 'message' => "Mot de passe incorrect (format hash: {$hashPrefix}...)"]);
         exit();
     }
 
