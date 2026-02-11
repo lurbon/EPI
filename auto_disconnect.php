@@ -24,8 +24,8 @@
  * 4. Rapport détaillé avec distinction des cas
  */
 
-// Charger la configuration WordPress
-require_once(__DIR__ . '/wp-config.php');
+// Charger la configuration
+require_once(__DIR__ . '/config.php');
 
 // Protection : CLI ou test manuel
 if (php_sapi_name() !== 'cli' && !isset($_GET['manual_run'])) {

@@ -1,6 +1,6 @@
 <?php
-// Charger la configuration WordPress
-require_once('wp-config.php');
+// Charger la configuration
+require_once('config.php');
 require_once('auth.php');
 verifierRole(['admin','gestionnaire']);
 
@@ -20,9 +20,9 @@ try {
 // Fonction pour générer un token sécurisé
 function generateSecureToken($missionId, $benevoleEmail) {
 	
- // Utiliser la clé définie dans wp-config.php, sinon erreur
+ // Utiliser la clé définie dans config.php, sinon erreur
     if (!defined('EPI_MISSION_SECRET_KEY')) {
-        error_log("SECURITE: EPI_MISSION_SECRET_KEY non définie dans wp-config.php");
+        error_log("SECURITE: EPI_MISSION_SECRET_KEY non définie dans config.php");
         die("Erreur de configuration. Contactez l'administrateur.");
     }
     $secretKey = EPI_MISSION_SECRET_KEY;

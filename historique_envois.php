@@ -6,8 +6,8 @@
  * Accès: Réservé aux admins et gestionnaires
  */
 
-// Charger la configuration WordPress
-require_once('wp-config.php');
+// Charger la configuration
+require_once('config.php');
 require_once('auth.php');
 verifierRole(['admin','gestionnaire']);
 

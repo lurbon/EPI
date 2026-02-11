@@ -51,8 +51,8 @@ function verifierSessionUnique() {
     }
     
     try {
-        // Charger la configuration WordPress
-        require_once(__DIR__ . '/wp-config.php');
+        // Charger la configuration
+        require_once(__DIR__ . '/config.php');
         
         $pdo = new PDO(
             "mysql:host=" . DB_HOST . ";dbname=" . DB_NAME . ";charset=utf8mb4",
@@ -111,8 +111,8 @@ function enregistrerDeconnexionAuto($raison = 'timeout') {
     }
     
     try {
-        // Charger la configuration WordPress
-        require_once(__DIR__ . '/wp-config.php');
+        // Charger la configuration
+        require_once(__DIR__ . '/config.php');
         
         $pdo = new PDO(
             "mysql:host=" . DB_HOST . ";dbname=" . DB_NAME . ";charset=utf8mb4",
@@ -278,9 +278,9 @@ function getUtilisateurConnecte() {
 }
 
 /**
- * Retourne le token JWT de l'utilisateur connecté
+ * Retourne le token de session de l'utilisateur connecté
  *
- * @return string|null Token JWT ou null si non connecté
+ * @return string|null Token de session ou null si non connecté
  */
 function getToken() {
     if (isset($_SESSION['token'])) {

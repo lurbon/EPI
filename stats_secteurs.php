@@ -1,6 +1,6 @@
 <?php
-// Charger la configuration WordPress
-require_once('wp-config.php');
+// Charger la configuration
+require_once('config.php');
 require_once('auth.php');
 verifierRole(['admin', 'gestionnaire','chauffeur','benevole']);
 
@@ -986,8 +986,8 @@ function formaterDuree($duree) {
     function exporterExcel() {
         const annee = <?php echo $annee; ?>;
         const secteur = '<?php echo addslashes($secteurFiltre); ?>';
-        // Utiliser le chemin relatif WordPress
-        window.location.href = '<?php echo get_site_url(); ?>/export_stats_secteurs_csv.php?annee=' + annee + '&secteur=' + encodeURIComponent(secteur);
+        // Exporter les statistiques en CSV
+        window.location.href = 'export_stats_secteurs_csv.php?annee=' + annee + '&secteur=' + encodeURIComponent(secteur);
     }
     </script>
 </body>

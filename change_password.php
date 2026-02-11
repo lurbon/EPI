@@ -1,10 +1,6 @@
 <?php
-require_once('wp-config.php');
-
-// Charger la classe PasswordHash de WordPress
-if (!class_exists('PasswordHash')) {
-    require_once(ABSPATH . 'wp-includes/class-phpass.php');
-}
+require_once('config.php');
+require_once('phpass_compat.php');
 
 $serveur = DB_HOST;
 $utilisateur = DB_USER;
@@ -19,7 +15,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $old_password = $_POST['old_password'] ?? '';
     $new_password = $_POST['new_password'] ?? '';
     $confirm_password = $_POST['confirm_password'] ?? '';
-    
+
     // Vérifications
     if (empty($username) || empty($old_password) || empty($new_password) || empty($confirm_password)) {
         $error = "Tous les champs sont obligatoires";
@@ -31,56 +27,40 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         try {
             $conn = new PDO("mysql:host=$serveur;dbname=$base;charset=utf8mb4", $utilisateur, $motdepasse);
             $conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-            
+
             // Vérifier l'utilisateur et l'ancien mot de passe
             $stmt = $conn->prepare("SELECT ID, user_pass FROM mod321_users WHERE user_login = :username");
             $stmt->execute([':username' => $username]);
             $user = $stmt->fetch(PDO::FETCH_ASSOC);
-            
+
             if (!$user) {
                 $error = "Nom d'utilisateur incorrect";
             } else {
-                // Vérifier le mot de passe via l'API JWT (comme dans login.php)
-                $jwtUrl = 'https://' . $_SERVER['HTTP_HOST'] . '/wp-json/jwt-auth/v1/token';
-                
-                $jwtData = json_encode([
-                    'username' => $username,
-                    'password' => $old_password
-                ]);
-                
-                $ch = curl_init($jwtUrl);
-                curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-                curl_setopt($ch, CURLOPT_POST, true);
-                curl_setopt($ch, CURLOPT_POSTFIELDS, $jwtData);
-                curl_setopt($ch, CURLOPT_HTTPHEADER, [
-                    'Content-Type: application/json',
-                    'Content-Length: ' . strlen($jwtData)
-                ]);
-                curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, true);
-                curl_setopt($ch, CURLOPT_TIMEOUT, 30);
-                
-                $response = curl_exec($ch);
-                $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-                curl_close($ch);
-                
-                $jwtResponse = json_decode($response, true);
-                
-                if ($httpCode !== 200 || !isset($jwtResponse['token'])) {
+                // Vérifier l'ancien mot de passe (supporte bcrypt et phpass)
+                $passwordValid = false;
+                $storedHash = $user['user_pass'];
+
+                if (strpos($storedHash, '$2y$') === 0 || strpos($storedHash, '$2a$') === 0) {
+                    $passwordValid = password_verify($old_password, $storedHash);
+                } elseif (strpos($storedHash, '$P$') === 0 || strpos($storedHash, '$H$') === 0) {
+                    $passwordValid = epi_phpass_check($old_password, $storedHash);
+                }
+
+                if (!$passwordValid) {
                     $error = "Ancien mot de passe incorrect";
                 } else {
-                    // Mettre à jour le mot de passe avec le hachage WordPress
-                    $wp_hasher = new PasswordHash(8, true);
-                    $new_password_hash = $wp_hasher->HashPassword($new_password);
+                    // Mettre à jour le mot de passe avec bcrypt natif
+                    $new_password_hash = password_hash($new_password, PASSWORD_BCRYPT);
                     $stmt = $conn->prepare("UPDATE mod321_users SET user_pass = :password WHERE ID = :id");
                     $stmt->execute([
                         ':password' => $new_password_hash,
                         ':id' => $user['ID']
                     ]);
-                    
+
                     $message = "Mot de passe modifié avec succès ! Vous pouvez maintenant vous connecter.";
                 }
             }
-            
+
         } catch(PDOException $e) {
             $error = "Erreur : " . $e->getMessage();
         }

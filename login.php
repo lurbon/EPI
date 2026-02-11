@@ -1,6 +1,6 @@
 <?php
 /**
- * Page de connexion unifiée avec JWT et suivi des connexions
+ * Page de connexion unifiée avec suivi des connexions
  * - GET  : Affiche le formulaire de connexion
  * - POST : Traite la connexion et retourne JSON
  */
@@ -19,11 +19,12 @@ session_start();
 require_once(__DIR__ . '/security-headers.php');
 
 // ============================================================================
-// TRAITEMENT POST : Authentification JWT
+// TRAITEMENT POST : Authentification directe
 // ============================================================================
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    // Charger la configuration WordPress pour la connexion à la base de données
-    require_once('wp-config.php');
+    // Charger la configuration de la base de données
+    require_once('config.php');
+    require_once('phpass_compat.php');
 
     // Récupérer les données JSON
     $input = file_get_contents('php://input');
@@ -60,100 +61,101 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
     $userAgent = $_SERVER['HTTP_USER_AGENT'] ?? 'Unknown';
 
-    // Appeler l'API JWT WordPress
-    $jwtUrl = 'https://' . $_SERVER['HTTP_HOST'] . '/wp-json/jwt-auth/v1/token';
+    // Rechercher l'utilisateur dans la base de données
+    $stmt = $pdo->prepare("
+        SELECT u.ID, u.user_login, u.user_pass, u.user_email, u.user_nicename, u.display_name
+        FROM mod321_users u
+        WHERE u.user_login = ?
+        LIMIT 1
+    ");
+    $stmt->execute([$username]);
+    $user = $stmt->fetch(PDO::FETCH_ASSOC);
 
-    $jwtData = json_encode([
-        'username' => $username,
-        'password' => $password
-    ]);
-
-    $ch = curl_init($jwtUrl);
-    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-    curl_setopt($ch, CURLOPT_POST, true);
-    curl_setopt($ch, CURLOPT_POSTFIELDS, $jwtData);
-    curl_setopt($ch, CURLOPT_HTTPHEADER, [
-        'Content-Type: application/json',
-        'Content-Length: ' . strlen($jwtData)
-    ]);
-    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, true);
-    curl_setopt($ch, CURLOPT_TIMEOUT, 30);
-
-    $response = curl_exec($ch);
-    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-    $curlError = curl_error($ch);
-    curl_close($ch);
-
-    // Vérifier les erreurs cURL
-    if ($curlError) {
+    if (!$user) {
         // Logger la tentative échouée
         try {
             $stmt = $pdo->prepare("
-                INSERT INTO connexions_log 
+                INSERT INTO connexions_log
                 (user_id, username, user_role, date_connexion, ip_address, user_agent, statut, message)
                 VALUES (0, ?, 'unknown', NOW(), ?, ?, 'failed', ?)
             ");
-            $stmt->execute([$username, $ipAddress, $userAgent, 'Erreur serveur: ' . $curlError]);
+            $stmt->execute([$username, $ipAddress, $userAgent, 'Utilisateur introuvable']);
         } catch (PDOException $e) {
             // Ignorer les erreurs de logging
         }
-        
-        http_response_code(500);
-        echo json_encode(['error' => true, 'message' => 'Erreur de connexion au serveur']);
+
+        http_response_code(401);
+        echo json_encode(['error' => true, 'message' => 'Identifiants incorrects']);
         exit();
     }
 
-    // Décoder la réponse
-    $jwtResponse = json_decode($response, true);
+    // Vérifier le mot de passe (supporte bcrypt et ancien format phpass)
+    $passwordValid = false;
+    $storedHash = $user['user_pass'];
 
-    // Vérifier la réponse JWT
-    if ($httpCode !== 200 || !isset($jwtResponse['token'])) {
+    if (strpos($storedHash, '$2y$') === 0 || strpos($storedHash, '$2a$') === 0) {
+        // Format bcrypt natif
+        $passwordValid = password_verify($password, $storedHash);
+    } elseif (strpos($storedHash, '$P$') === 0 || strpos($storedHash, '$H$') === 0) {
+        // Ancien format phpass (WordPress) - vérification compatible
+        $passwordValid = epi_phpass_check($password, $storedHash);
+
+        // Si le mot de passe est valide, migrer vers bcrypt
+        if ($passwordValid) {
+            $newHash = password_hash($password, PASSWORD_BCRYPT);
+            try {
+                $stmtUpdate = $pdo->prepare("UPDATE mod321_users SET user_pass = ? WHERE ID = ?");
+                $stmtUpdate->execute([$newHash, $user['ID']]);
+            } catch (PDOException $e) {
+                error_log("Erreur migration mot de passe vers bcrypt: " . $e->getMessage());
+            }
+        }
+    }
+
+    if (!$passwordValid) {
         // Logger la tentative échouée
         try {
             $stmt = $pdo->prepare("
-                INSERT INTO connexions_log 
+                INSERT INTO connexions_log
                 (user_id, username, user_role, date_connexion, ip_address, user_agent, statut, message)
                 VALUES (0, ?, 'unknown', NOW(), ?, ?, 'failed', ?)
             ");
-            $stmt->execute([
-                $username, 
-                $ipAddress, 
-                $userAgent, 
-                $jwtResponse['message'] ?? 'Identifiants incorrects'
-            ]);
+            $stmt->execute([$username, $ipAddress, $userAgent, 'Identifiants incorrects']);
         } catch (PDOException $e) {
             // Ignorer les erreurs de logging
         }
-        
-        http_response_code($httpCode);
-        echo json_encode([
-            'error' => true,
-            'message' => $jwtResponse['message'] ?? 'Identifiants incorrects'
-        ]);
+
+        http_response_code(401);
+        echo json_encode(['error' => true, 'message' => 'Identifiants incorrects']);
         exit();
     }
 
-    // Extraire les informations utilisateur
-    $userRoles = $jwtResponse['roles'] ?? 
-                 $jwtResponse['role'] ?? 
-                 $jwtResponse['user_roles'] ?? 
-                 $jwtResponse['user_role'] ?? 
-                 ['subscriber'];
-
-    // Normaliser les rôles en tableau
-    if (is_string($userRoles)) {
-        $userRoles = [$userRoles];
-    }
-    if (!is_array($userRoles)) {
-        $userRoles = ['subscriber'];
+    // Récupérer les rôles depuis la table usermeta
+    $userRoles = ['subscriber'];
+    try {
+        $stmtMeta = $pdo->prepare("
+            SELECT meta_value FROM mod321_usermeta
+            WHERE user_id = ? AND meta_key = 'mod321_capabilities'
+            LIMIT 1
+        ");
+        $stmtMeta->execute([$user['ID']]);
+        $metaRow = $stmtMeta->fetch(PDO::FETCH_ASSOC);
+        if ($metaRow && $metaRow['meta_value']) {
+            $capabilities = @unserialize($metaRow['meta_value']);
+            if (is_array($capabilities)) {
+                $userRoles = array_keys($capabilities);
+            }
+        }
+    } catch (PDOException $e) {
+        error_log("Erreur récupération rôles: " . $e->getMessage());
     }
 
     // Construire l'objet utilisateur
     $userData = [
-        'id' => $jwtResponse['id'] ?? $jwtResponse['user_id'] ?? null,
-        'name' => $jwtResponse['user_nicename'] ?? $jwtResponse['user_display_name'] ?? $jwtResponse['username'] ?? $username,
-        'email' => $jwtResponse['user_email'] ?? $jwtResponse['email'] ?? '',
-        'username' => $jwtResponse['username'] ?? $jwtResponse['user_login'] ?? $username,
+        'id' => $user['ID'],
+        'name' => $user['display_name'] ?: $user['user_nicename'] ?: $username,
+        'email' => $user['user_email'] ?? '',
+        'username' => $user['user_login'],
         'roles' => $userRoles
     ];
 
@@ -161,8 +163,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // IMPORTANT : À faire AVANT de stocker les données sensibles
     session_regenerate_id(true);
 
+    // Générer un token de session sécurisé
+    $sessionToken = bin2hex(random_bytes(32));
+
     // Stocker dans la session
-    $_SESSION['token'] = $jwtResponse['token'];
+    $_SESSION['token'] = $sessionToken;
     $_SESSION['user'] = $userData;
     $_SESSION['token_expires_absolute'] = time() + 10800; // Expiration ABSOLUE - 3 heures (renouvelée à chaque activité)
     $_SESSION['last_activity'] = time(); // Pour détecter l'inactivité

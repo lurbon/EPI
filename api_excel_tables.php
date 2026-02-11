@@ -6,7 +6,7 @@
  * compatible avec Excel
  *
  * Authentification:
- *   - Par cle API: &api_key=VOTRE_CLE (definie dans wp-config.php : API_EXCEL_KEY)
+ *   - Par cle API: &api_key=VOTRE_CLE (definie dans config.php : API_EXCEL_KEY)
  *
  * Utilisation:
  *   ?table=benevoles    - Retourne tous les benevoles
@@ -21,10 +21,10 @@
  * Date de creation: 2026-02-04
  */
 
-require_once('wp-config.php');
+require_once('config.php');
 
 // ============================================================
-// CLE API : definie dans wp-config.php (constante API_EXCEL_KEY)
+// CLE API : definie dans config.php (constante API_EXCEL_KEY)
 // ============================================================
 if (!defined('API_EXCEL_KEY')) {
     http_response_code(500);

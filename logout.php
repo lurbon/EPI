@@ -6,8 +6,8 @@
 // Démarrer la session
 session_start();
 
-// Charger la configuration WordPress
-require_once('wp-config.php');
+// Charger la configuration
+require_once('config.php');
 
 // Récupérer les informations avant de détruire la session
 $userName = isset($_SESSION['user']['name']) ? $_SESSION['user']['name'] : 'utilisateur';

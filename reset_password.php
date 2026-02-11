@@ -1,10 +1,5 @@
 <?php
-require_once('wp-config.php');
-
-// Charger la classe PasswordHash de WordPress
-if (!class_exists('PasswordHash')) {
-    require_once(ABSPATH . 'wp-includes/class-phpass.php');
-}
+require_once('config.php');
 
 $serveur = DB_HOST;
 $utilisateur = DB_USER;
@@ -17,42 +12,38 @@ $error = '';
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $username = $_POST['username'] ?? '';
     $email = $_POST['email'] ?? '';
-    
+
     if (empty($username) || empty($email)) {
         $error = "Tous les champs sont obligatoires";
     } else {
         try {
             $conn = new PDO("mysql:host=$serveur;dbname=$base;charset=utf8mb4", $utilisateur, $motdepasse);
             $conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-            
+
             // Vérifier si l'utilisateur existe avec cet email
             $stmt = $conn->prepare("SELECT ID, user_login, user_email, display_name FROM mod321_users WHERE user_login = :username AND user_email = :email");
             $stmt->execute([':username' => $username, ':email' => $email]);
             $user = $stmt->fetch(PDO::FETCH_ASSOC);
-            
+
             if (!$user) {
                 $error = "Nom d'utilisateur ou email incorrect";
             } else {
                 // Générer un mot de passe temporaire
                 $temp_password = 'Temp' . rand(1000, 9999);
-                
-                // Hasher avec la classe PasswordHash
-                $wp_hasher = new PasswordHash(8, true);
-                $temp_password_hash = $wp_hasher->HashPassword($temp_password);
-                
+
+                // Hasher avec bcrypt natif
+                $temp_password_hash = password_hash($temp_password, PASSWORD_BCRYPT);
+
                 // Mettre à jour avec le mot de passe temporaire
                 $stmt = $conn->prepare("UPDATE mod321_users SET user_pass = :password WHERE ID = :id");
                 $stmt->execute([
                     ':password' => $temp_password_hash,
                     ':id' => $user['ID']
                 ]);
-                
+
                 $message = "Votre mot de passe a été réinitialisé. Votre mot de passe temporaire est : <strong>" . $temp_password . "</strong><br><br>Veuillez le noter et le changer dès votre première connexion.";
-                
-                // Note : Dans une vraie application, on enverrait ce mot de passe par email
-                // plutôt que de l'afficher à l'écran
             }
-            
+
         } catch(PDOException $e) {
             $error = "Erreur : " . $e->getMessage();
         }

@@ -5,8 +5,8 @@
 // Authentification requise
 require_once(__DIR__ . '/auth.php');
 
-// Charger WordPress pour accéder aux constantes
-require_once('wp-config.php');
+// Charger la configuration
+require_once('config.php');
 
 // Vérifier que la clé API existe
 if (!defined('OPENROUTE_API_KEY') || empty(OPENROUTE_API_KEY)) {

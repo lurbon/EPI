@@ -31,7 +31,7 @@ function enregistrerActiviteDB($pdo = null) {
     // Créer une connexion si nécessaire
     if ($pdo === null) {
         try {
-            require_once(__DIR__ . '/wp-config.php');
+            require_once(__DIR__ . '/config.php');
             $pdo = new PDO(
                 "mysql:host=" . DB_HOST . ";dbname=" . DB_NAME . ";charset=utf8mb4",
                 DB_USER,
