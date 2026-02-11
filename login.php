@@ -85,31 +85,41 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
 
         http_response_code(401);
-        echo json_encode(['error' => true, 'message' => 'Utilisateur introuvable dans la base de données']);
+        echo json_encode(['error' => true, 'message' => 'Identifiants incorrects']);
         exit();
     }
 
-    // Vérifier le mot de passe (supporte bcrypt et ancien format phpass)
+    // Vérifier le mot de passe (supporte bcrypt, phpass, et format WordPress $wp$)
     $passwordValid = false;
     $storedHash = $user['user_pass'];
 
     if (strpos($storedHash, '$2y$') === 0 || strpos($storedHash, '$2a$') === 0) {
         // Format bcrypt natif
         $passwordValid = password_verify($password, $storedHash);
+    } elseif (strpos($storedHash, '$wp$') === 0) {
+        // Format WordPress 6.4+ ($wp$ suivi d'un hash standard)
+        // Extraire le hash interne en retirant le préfixe $wp$
+        $innerHash = substr($storedHash, 3); // retire "$wp" → reste "$2y$..." ou "$argon2id$..."
+        $passwordValid = password_verify($password, $innerHash);
     } elseif (strpos($storedHash, '$P$') === 0 || strpos($storedHash, '$H$') === 0) {
         // Ancien format phpass (WordPress) - vérification compatible
         $passwordValid = epi_phpass_check($password, $storedHash);
+    }
 
-        // Si le mot de passe est valide, migrer vers bcrypt
-        if ($passwordValid) {
-            $newHash = password_hash($password, PASSWORD_BCRYPT);
-            try {
-                $stmtUpdate = $pdo->prepare("UPDATE mod321_users SET user_pass = ? WHERE ID = ?");
-                $stmtUpdate->execute([$newHash, $user['ID']]);
-            } catch (PDOException $e) {
-                error_log("Erreur migration mot de passe vers bcrypt: " . $e->getMessage());
-            }
+    // Si password valide mais pas encore en bcrypt natif, migrer
+    if ($passwordValid && strpos($storedHash, '$2y$') !== 0) {
+        $newHash = password_hash($password, PASSWORD_BCRYPT);
+        try {
+            $stmtUpdate = $pdo->prepare("UPDATE mod321_users SET user_pass = ? WHERE ID = ?");
+            $stmtUpdate->execute([$newHash, $user['ID']]);
+        } catch (PDOException $e) {
+            error_log("Erreur migration mot de passe vers bcrypt: " . $e->getMessage());
         }
+    }
+
+    // Fallback : essayer password_verify directement sur le hash brut
+    if (!$passwordValid) {
+        $passwordValid = password_verify($password, $storedHash);
     }
 
     if (!$passwordValid) {
@@ -125,10 +135,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             // Ignorer les erreurs de logging
         }
 
-        // DEBUG TEMPORAIRE - format du hash détecté
-        $hashPrefix = substr($storedHash, 0, 4);
         http_response_code(401);
-        echo json_encode(['error' => true, 'message' => "Mot de passe incorrect (format hash: {$hashPrefix}...)"]);
+        echo json_encode(['error' => true, 'message' => 'Identifiants incorrects']);
         exit();
     }
 
