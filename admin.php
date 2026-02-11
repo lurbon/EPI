@@ -199,8 +199,7 @@ verifierRole(['admin']);
     </style>
 </head>
 <body>
-    <button onclick="window.location.href='dashboard.php'" class="back-link" title="Retour au tableau de bord">🏠</button>
-
+ <button onclick="window.location.href='dashboard.php'" class="back-link" title="Retour au tableau de bord">🏠</button>
     <div class="container">
         <h1>Administration</h1>
         <p class="subtitle">Outils réservés aux administrateurs</p>
